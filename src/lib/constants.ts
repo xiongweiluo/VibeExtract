@@ -29,4 +29,31 @@ export const MOCK_DESIGN_TOKENS: DesignTokens = {
     sans: 'Inter, ui-sans-serif, system-ui, sans-serif',
     headingWeight: '700',
   },
+  layoutVibe: 'card-heavy layout, generous whitespace, sticky header, clean grid',
+  typeScale: {
+    hero: '56px',
+    heading: '28px',
+    body: '16px',
+    label: '12px',
+    lineHeight: '1.5',
+  },
+  layoutStructure: {
+    pattern: 'landing',
+    density: 'comfortable',
+    heroStyle: 'centered',
+    navStyle: 'sticky',
+    sectionGap: '64px',
+    contentPadding: '48px',
+  },
+  components: {
+    card: {
+      shadow: '0 1px 3px rgba(0,0,0,0.08), 0 4px 12px rgba(0,0,0,0.06)',
+      padding: '20px 24px',
+    },
+    button: {
+      paddingX: '20px',
+      paddingY: '10px',
+      letterSpacing: 'normal',
+    },
+  },
 };

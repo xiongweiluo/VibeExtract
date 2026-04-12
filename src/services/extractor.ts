@@ -22,17 +22,67 @@ interface DesignTokens {
     sans: string;      // font-family stack
     headingWeight: string; // e.g. "700"
   };
+  layoutVibe: string;  // 3–5 comma-separated layout personality tags, e.g. "high-density grid, generous whitespace, oversized headings, sticky nav"
+  typeScale: {
+    hero: string;       // largest headline, e.g. "72px"
+    heading: string;    // section heading, e.g. "32px"
+    body: string;       // body copy, e.g. "16px"
+    label: string;      // captions/labels, e.g. "12px"
+    lineHeight: string; // dominant line-height, e.g. "1.2" or "1.6"
+  };
+  layoutStructure: {
+    pattern: 'hero-centric' | 'card-grid' | 'editorial' | 'dashboard' | 'landing';
+    density: 'compact' | 'comfortable' | 'spacious';
+    heroStyle: 'full-bleed' | 'split' | 'centered' | 'none';
+    navStyle: 'sticky' | 'transparent' | 'sidebar' | 'minimal';
+    sectionGap: string;    // e.g. "80px"
+    contentPadding: string; // e.g. "5%" or "48px"
+  };
+  components: {
+    card: {
+      shadow: string;        // full CSS box-shadow value, e.g. "0 2px 8px rgba(0,0,0,0.12)"
+      padding: string;       // CSS shorthand observed on cards/panels, e.g. "16px 20px"
+    };
+    button: {
+      paddingX: string;      // horizontal padding, e.g. "24px"
+      paddingY: string;      // vertical padding, e.g. "10px"
+      letterSpacing: string; // e.g. "0.04em" or "normal"
+    };
+  };
 }
 
 Rules:
 - All color values must be exact HEX strings (#RRGGBB).
 - Derive border-radius from buttons, cards, inputs — use small/medium/large tiers.
+- layoutVibe: observe the page's spatial rhythm. Tag things like: "high-density grid",
+  "card-heavy layout", "editorial / magazine", "generous whitespace", "oversized headings",
+  "full-bleed hero", "sidebar navigation", "sticky header", "infinite scroll feed", etc.
+  Use 3–5 tags that best describe what makes this site feel unique.
+- typeScale: read the actual pixel sizes from the visual hierarchy.
+  hero = the largest text block visible (often above the fold); heading = section-level titles;
+  body = paragraph text; label = small UI labels/captions.
+  lineHeight: tight (1.1–1.3) is common in editorial/hero-heavy sites; relaxed (1.5–1.7) in docs/landing pages.
+- layoutStructure.pattern: choose the ONE that best matches the dominant page structure:
+    hero-centric — large above-the-fold hero consumes most of the viewport
+    card-grid    — primary content is a repeating grid/masonry of cards (Pinterest, Airbnb, Product Hunt)
+    editorial    — text-dominant, long-form, magazine-style columns (Medium, NYT, Substack)
+    dashboard    — data-heavy, sidebar nav, metric widgets (Notion, Linear, Vercel dashboard)
+    landing      — marketing page with hero + feature sections + CTA rows
+- layoutStructure.density: compact = tight gutters / high content density; spacious = lots of breathing room.
+- layoutStructure.heroStyle: how the above-the-fold hero is treated spatially.
+- layoutStructure.sectionGap: vertical distance between major content sections.
+- layoutStructure.contentPadding: horizontal page padding / max-width inset.
+- components.card: look at actual card/panel elements — estimate shadow depth (none / soft / dramatic)
+  and the internal padding from visual alignment of content edges.
+- components.button: examine primary CTA buttons — estimate horizontal and vertical padding,
+  and whether text appears tracked/spaced (letter-spacing > 0) or normal.
 - If a value cannot be reliably inferred, make a reasonable design-system guess rather than omitting the key.
 - Output ONLY the raw JSON object. Any character outside the JSON will cause a parse error.`;
 
-const USER_PROMPT = `Analyse this UI screenshot.
+const USER_PROMPT = `Analyse this UI screenshot carefully.
 
-Extract:
+Extract the following and return a single DesignTokens JSON:
+
 1. Brand colours — primary (dominant CTA / accent) and secondary (supporting accent). Must be precise HEX.
 2. Background colours — page background and card/panel background.
 3. Text colours — body text and muted/secondary text.
@@ -40,6 +90,16 @@ Extract:
 5. Spacing — identify the base grid unit (4 or 8 px is common) and the CSS scale unit ("rem" or "px").
 6. Border-radius — small (inputs/tags), medium (cards/buttons), large (modals/sheets). Provide CSS values.
 7. Typography — font-family stack and heading font-weight.
+8. Layout vibe — 3–5 comma-separated tags. Be precise and site-specific.
+9. Type scale — measure or estimate the actual pixel sizes for hero headline, section heading,
+   body copy, and label text. Note whether line-height is tight (<1.3) or relaxed (>1.5).
+10. Layout structure — identify the dominant pattern (hero-centric / card-grid / editorial / dashboard / landing),
+    spatial density, hero style, nav style, section gap, and content padding.
+11. Component semantics:
+   - Card: estimate the box-shadow (be specific with blur/spread/alpha) and the internal padding
+     from how content sits inside panels. Even subtle shadows count.
+   - Button: measure horizontal and vertical padding from the primary CTA. Note if text is
+     letter-spaced (tracking) — many brands use 0.05–0.1 em on uppercase buttons.
 
 Return only the JSON object conforming to DesignTokens. No other text.`;
 
@@ -63,7 +123,7 @@ export async function extractDesignSystem(
 
   const response = await client.messages.create({
     model: MODEL,
-    max_tokens: 1024,
+    max_tokens: 2048,
     system: SYSTEM_PROMPT,
     messages: [
       {
@@ -138,6 +198,28 @@ function validateTokens(t: unknown): asserts t is DesignTokens {
     'typography',
     'typography.sans',
     'typography.headingWeight',
+    'layoutVibe',
+    'typeScale',
+    'typeScale.hero',
+    'typeScale.heading',
+    'typeScale.body',
+    'typeScale.label',
+    'typeScale.lineHeight',
+    'layoutStructure',
+    'layoutStructure.pattern',
+    'layoutStructure.density',
+    'layoutStructure.heroStyle',
+    'layoutStructure.navStyle',
+    'layoutStructure.sectionGap',
+    'layoutStructure.contentPadding',
+    'components',
+    'components.card',
+    'components.card.shadow',
+    'components.card.padding',
+    'components.button',
+    'components.button.paddingX',
+    'components.button.paddingY',
+    'components.button.letterSpacing',
   ];
 
   for (const path of required) {

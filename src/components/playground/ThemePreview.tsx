@@ -105,39 +105,239 @@ function downloadJSON(t: DesignTokens, siteUrl: string): void {
   document.body.removeChild(a); URL.revokeObjectURL(url);
 }
 
-// ── MockPage ──────────────────────────────────────────────────────────────
-function MockPage({ tokens }: { tokens: DesignTokens }) {
-  const { colors: c, borderRadius: r, typography: t, spacing } = tokens;
-  const u  = spacing.base;
-  const px = (n: number) => `${u * n}px`;
+// ── MockPage helpers ───────────────────────────────────────────────────────
 
+/** Parse "72px" / "4.5rem" / "1.2" → numeric px equivalent (rem assumed 16px base) */
+function parsePx(value: string): number {
+  const v = value.trim();
+  if (v.endsWith('rem')) return parseFloat(v) * 16;
+  if (v.endsWith('em'))  return parseFloat(v) * 16;
+  if (v.endsWith('px'))  return parseFloat(v);
+  const n = parseFloat(v);
+  return isNaN(n) ? 16 : n;
+}
+
+/** Scale a raw extracted px value to fit inside the ~260 px tall mock viewport */
+function mockSize(value: string, scale: number): string {
+  return `${Math.round(parsePx(value) * scale)}px`;
+}
+
+// density → base gap multiplier
+const DENSITY_GAP: Record<string, number> = { compact: 0.6, comfortable: 1, spacious: 1.5 };
+
+// ── Layout renderers ───────────────────────────────────────────────────────
+
+function NavBar({ tokens, transparent }: { tokens: DesignTokens; transparent?: boolean }) {
+  const { colors: c, typography: t } = tokens;
+  const bg = transparent ? 'transparent' : c.brand.primary;
+  const fg = transparent ? c.text.base : '#fff';
   return (
-    <div style={{ fontFamily: t.sans, background: c.background.main, color: c.text.base, fontSize:13, lineHeight:1.6, height:'100%' }}>
-      <nav style={{ background: c.brand.primary, display:'flex', alignItems:'center', justifyContent:'space-between', padding:`${px(2)} ${px(4)}` }}>
-        <span style={{ fontWeight: t.headingWeight, color:'#fff', fontSize:15 }}>Brand</span>
-        <div style={{ display:'flex', gap: px(4) }}>
-          {['Product','Docs','Pricing'].map(l => <span key={l} style={{ color:'rgba(255,255,255,.82)', fontSize:12 }}>{l}</span>)}
-        </div>
-      </nav>
-      <div style={{ textAlign:'center', padding:`${px(8)} ${px(6)} ${px(6)}` }}>
-        <h1 style={{ fontWeight: t.headingWeight, fontSize:26, color: c.text.base, marginBottom: px(2) }}>Beautiful by Default</h1>
-        <p style={{ color: c.text.muted, fontSize:13, marginBottom: px(4) }}>Extracted straight from the source. Zero guesswork.</p>
-        <button style={{ background: c.brand.primary, color:'#fff', border:'none', borderRadius: r.small, padding:`${px(1.5)} ${px(4)}`, fontWeight: t.headingWeight, fontSize:12, cursor:'default', marginRight: px(2) }}>Get started</button>
-        <button style={{ background:'transparent', color: c.brand.primary, border:`1.5px solid ${c.brand.primary}`, borderRadius: r.small, padding:`${px(1.5)} ${px(4)}`, fontSize:12, cursor:'default' }}>Learn more</button>
+    <nav style={{ background: bg, display:'flex', alignItems:'center', justifyContent:'space-between', padding:'8px 16px', borderBottom: transparent ? `1px solid ${c.border}` : 'none', flexShrink:0 }}>
+      <span style={{ fontWeight: t.headingWeight, color: fg, fontSize:13, fontFamily: t.sans }}>Brand</span>
+      <div style={{ display:'flex', gap:12 }}>
+        {['Product','Docs','Pricing'].map(l => (
+          <span key={l} style={{ color: transparent ? c.text.muted : 'rgba(255,255,255,.8)', fontSize:10, fontFamily: t.sans }}>{l}</span>
+        ))}
       </div>
-      <div style={{ display:'grid', gridTemplateColumns:'repeat(3,1fr)', gap: px(3), padding:`0 ${px(6)} ${px(6)}` }}>
-        {[['Design System','Consistent visual language.'],['Token Export','One-click to Tailwind / CSS.'],['AI Powered','Claude Vision semantic scan.']].map(([title, text]) => (
-          <div key={title} style={{ background: c.background.card, border:`1px solid ${c.border}`, borderRadius: r.medium, padding: px(3) }}>
-            <div style={{ width:20, height:20, borderRadius: r.small, background: c.brand.primary, opacity:0.7, marginBottom: px(2) }} />
-            <p style={{ fontWeight: t.headingWeight, fontSize:13, color: c.text.base, marginBottom: px(1) }}>{title}</p>
-            <p style={{ fontSize:11, color: c.text.muted }}>{text}</p>
+    </nav>
+  );
+}
+
+/** hero-centric — oversized centered headline, prominent CTA */
+function HeroCentricLayout({ tokens, scale }: { tokens: DesignTokens; scale: number }) {
+  const { colors: c, borderRadius: r, typography: t, components, layoutStructure } = tokens;
+  const gap = DENSITY_GAP[layoutStructure.density] ?? 1;
+  const btnStyle: React.CSSProperties = {
+    background: c.brand.primary, color: '#fff', border: 'none',
+    borderRadius: r.small, cursor: 'default', fontFamily: t.sans,
+    fontWeight: t.headingWeight,
+    padding: `${components.button.paddingY} ${components.button.paddingX}`,
+    letterSpacing: components.button.letterSpacing,
+    fontSize: mockSize(tokens.typeScale.label, scale),
+  };
+  return (
+    <div style={{ display:'flex', flexDirection:'column', height:'100%', background: c.background.main, fontFamily: t.sans, color: c.text.base }}>
+      <NavBar tokens={tokens} transparent={layoutStructure.navStyle === 'transparent'} />
+      <div style={{ flex:1, display:'flex', flexDirection:'column', alignItems:'center', justifyContent:'center', padding:`${8 * gap}px 20px`, textAlign:'center', gap: `${10 * gap}px` }}>
+        <h1 style={{ fontWeight: t.headingWeight, fontSize: mockSize(tokens.typeScale.hero, scale), lineHeight: tokens.typeScale.lineHeight, color: c.text.base, margin:0 }}>
+          Beautiful<br/>by Default
+        </h1>
+        <p style={{ color: c.text.muted, fontSize: mockSize(tokens.typeScale.body, scale * 0.9), margin:0, maxWidth:220 }}>
+          Extracted straight from the source. Zero guesswork.
+        </p>
+        <div style={{ display:'flex', gap:8 }}>
+          <button style={btnStyle}>Get started</button>
+          <button style={{ ...btnStyle, background:'transparent', color: c.brand.primary, border:`1.5px solid ${c.brand.primary}` }}>Learn more</button>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+/** card-grid — dense card feed, minimal nav (Pinterest / Airbnb feel) */
+function CardGridLayout({ tokens, scale }: { tokens: DesignTokens; scale: number }) {
+  const { colors: c, borderRadius: r, typography: t, components, layoutStructure } = tokens;
+  const gap = DENSITY_GAP[layoutStructure.density] ?? 1;
+  const gapPx = `${Math.round(6 * gap)}px`;
+  const cols = layoutStructure.density === 'compact' ? 4 : 3;
+  const cards = Array.from({ length: cols * 2 }, (_, i) => i);
+  return (
+    <div style={{ display:'flex', flexDirection:'column', height:'100%', background: c.background.main, fontFamily: t.sans }}>
+      <NavBar tokens={tokens} transparent />
+      <div style={{ flex:1, overflow:'hidden', padding:`${gapPx}`, display:'grid', gridTemplateColumns:`repeat(${cols}, 1fr)`, gap: gapPx, alignContent:'start' }}>
+        {cards.map(i => (
+          <div key={i} style={{ background: c.background.card, borderRadius: r.medium, boxShadow: components.card.shadow, overflow:'hidden' }}>
+            <div style={{ height: i % 3 === 0 ? 42 : 30, background: i % 2 === 0 ? c.brand.primary : c.brand.secondary, opacity: 0.35 + (i % 3) * 0.15 }} />
+            <div style={{ padding:'5px 6px' }}>
+              <p style={{ margin:0, fontSize: mockSize(tokens.typeScale.label, scale), fontWeight: t.headingWeight, color: c.text.base, overflow:'hidden', whiteSpace:'nowrap', textOverflow:'ellipsis' }}>
+                {['Card title','Feature','Item name','Product'][i % 4]}
+              </p>
+              <p style={{ margin:'2px 0 0', fontSize: mockSize(tokens.typeScale.label, scale * 0.82), color: c.text.muted }}>
+                {['$29','★ 4.8','New','Free'][i % 4]}
+              </p>
+            </div>
           </div>
         ))}
       </div>
-      <div style={{ display:'flex', gap: px(2), padding:`0 ${px(6)} ${px(6)}` }}>
-        <input readOnly placeholder="Enter your email" style={{ flex:1, border:`1px solid ${c.border}`, borderRadius: r.small, padding:`${px(1.5)} ${px(3)}`, background: c.background.card, color: c.text.muted, fontSize:12, outline:'none' }} />
-        <button style={{ background: c.brand.primary, color:'#fff', border:'none', borderRadius: r.small, padding:`${px(1.5)} ${px(3)}`, fontWeight: t.headingWeight, fontSize:12, cursor:'default', whiteSpace:'nowrap' }}>Subscribe</button>
+    </div>
+  );
+}
+
+/** editorial — wide headline + paragraph columns (Medium / Substack feel) */
+function EditorialLayout({ tokens, scale }: { tokens: DesignTokens; scale: number }) {
+  const { colors: c, borderRadius: r, typography: t, components, layoutStructure } = tokens;
+  const gap = DENSITY_GAP[layoutStructure.density] ?? 1;
+  return (
+    <div style={{ display:'flex', flexDirection:'column', height:'100%', background: c.background.main, fontFamily: t.sans, color: c.text.base }}>
+      <NavBar tokens={tokens} transparent />
+      <div style={{ flex:1, overflow:'hidden', padding:`${Math.round(10 * gap)}px 20px`, display:'flex', flexDirection:'column', gap:`${Math.round(8 * gap)}px` }}>
+        <div style={{ display:'flex', gap:6, alignItems:'center' }}>
+          <div style={{ width:16, height:16, borderRadius:'50%', background: c.brand.primary, opacity:.6, flexShrink:0 }} />
+          <span style={{ fontSize: mockSize(tokens.typeScale.label, scale), color: c.text.muted }}>Author · 5 min read</span>
+        </div>
+        <h1 style={{ margin:0, fontWeight: t.headingWeight, fontSize: mockSize(tokens.typeScale.heading, scale), lineHeight: tokens.typeScale.lineHeight, color: c.text.base }}>
+          The new standard for design systems
+        </h1>
+        <p style={{ margin:0, fontSize: mockSize(tokens.typeScale.body, scale * 0.88), lineHeight: tokens.typeScale.lineHeight, color: c.text.muted }}>
+          Every great product starts with a coherent visual language. Extract, iterate, and ship.
+        </p>
+        <div style={{ width:'100%', height: Math.round(48 * gap), borderRadius: r.medium, background: c.brand.secondary, opacity:.18 }} />
+        <p style={{ margin:0, fontSize: mockSize(tokens.typeScale.body, scale * 0.88), color: c.text.muted, lineHeight: tokens.typeScale.lineHeight }}>
+          Consistent spacing, intentional colour, and typographic hierarchy form the bedrock of
+          <span style={{ color: c.brand.primary, fontWeight: t.headingWeight }}> every memorable interface.</span>
+        </p>
+        <div style={{ display:'flex', gap:6 }}>
+          {['Design','Systems','Tokens'].map(tag => (
+            <span key={tag} style={{ padding:`2px 8px`, borderRadius: r.small, border:`1px solid ${c.border}`, fontSize: mockSize(tokens.typeScale.label, scale), color: c.text.muted }}>
+              {tag}
+            </span>
+          ))}
+        </div>
       </div>
+    </div>
+  );
+}
+
+/** dashboard — sidebar nav + metric cards (Linear / Vercel dashboard feel) */
+function DashboardLayout({ tokens, scale }: { tokens: DesignTokens; scale: number }) {
+  const { colors: c, borderRadius: r, typography: t, components } = tokens;
+  const metrics = [['2.4k','Users'],['98%','Uptime'],['14ms','Latency'],['$4.2k','Revenue']];
+  return (
+    <div style={{ display:'flex', height:'100%', background: c.background.main, fontFamily: t.sans, color: c.text.base }}>
+      {/* Sidebar */}
+      <div style={{ width:52, background: c.background.card, borderRight:`1px solid ${c.border}`, display:'flex', flexDirection:'column', alignItems:'center', paddingTop:10, gap:8, flexShrink:0 }}>
+        <div style={{ width:22, height:22, borderRadius: r.small, background: c.brand.primary, marginBottom:6 }} />
+        {['⊞','◈','⇿','⊙'].map((icon, i) => (
+          <div key={i} style={{ width:28, height:28, borderRadius: r.small, display:'flex', alignItems:'center', justifyContent:'center', fontSize:11, color: i===0 ? c.brand.primary : c.text.muted, background: i===0 ? `${c.brand.primary}18` : 'transparent' }}>
+            {icon}
+          </div>
+        ))}
+      </div>
+      {/* Main */}
+      <div style={{ flex:1, overflow:'hidden', padding:'10px 12px', display:'flex', flexDirection:'column', gap:8 }}>
+        <h2 style={{ margin:0, fontWeight: t.headingWeight, fontSize: mockSize(tokens.typeScale.heading, scale * 0.8), color: c.text.base }}>Overview</h2>
+        <div style={{ display:'grid', gridTemplateColumns:'1fr 1fr', gap:6 }}>
+          {metrics.map(([val, label]) => (
+            <div key={label} style={{ background: c.background.card, border:`1px solid ${c.border}`, borderRadius: r.medium, padding: components.card.padding, boxShadow: components.card.shadow }}>
+              <p style={{ margin:0, fontWeight: t.headingWeight, fontSize: mockSize(tokens.typeScale.heading, scale * 0.75), color: c.brand.primary }}>{val}</p>
+              <p style={{ margin:'2px 0 0', fontSize: mockSize(tokens.typeScale.label, scale), color: c.text.muted }}>{label}</p>
+            </div>
+          ))}
+        </div>
+        <div style={{ flex:1, background: c.background.card, border:`1px solid ${c.border}`, borderRadius: r.medium, padding:'8px 10px' }}>
+          <p style={{ margin:'0 0 6px', fontSize: mockSize(tokens.typeScale.label, scale), color: c.text.muted, fontWeight: t.headingWeight }}>Activity</p>
+          <div style={{ display:'flex', alignItems:'flex-end', gap:3, height:40 }}>
+            {[40,65,45,80,60,90,55,70,85,50,75,95].map((h, i) => (
+              <div key={i} style={{ flex:1, height:`${h}%`, borderRadius:'2px 2px 0 0', background: c.brand.primary, opacity: 0.3 + (h / 100) * 0.6 }} />
+            ))}
+          </div>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+/** landing — split hero (text left / visual right) + feature row */
+function LandingLayout({ tokens, scale }: { tokens: DesignTokens; scale: number }) {
+  const { colors: c, borderRadius: r, typography: t, components, layoutStructure } = tokens;
+  const gap = DENSITY_GAP[layoutStructure.density] ?? 1;
+  const btnStyle: React.CSSProperties = {
+    background: c.brand.primary, color: '#fff', border: 'none', borderRadius: r.small,
+    cursor: 'default', fontFamily: t.sans, fontWeight: t.headingWeight,
+    padding: `${components.button.paddingY} ${components.button.paddingX}`,
+    letterSpacing: components.button.letterSpacing,
+    fontSize: mockSize(tokens.typeScale.label, scale),
+  };
+  return (
+    <div style={{ display:'flex', flexDirection:'column', height:'100%', background: c.background.main, fontFamily: t.sans, color: c.text.base }}>
+      <NavBar tokens={tokens} transparent={layoutStructure.navStyle === 'transparent'} />
+      {/* Split hero */}
+      <div style={{ display:'flex', flex:1, overflow:'hidden' }}>
+        <div style={{ flex:1, display:'flex', flexDirection:'column', justifyContent:'center', padding:`${Math.round(10 * gap)}px 16px`, gap:`${Math.round(6 * gap)}px` }}>
+          <h1 style={{ margin:0, fontWeight: t.headingWeight, fontSize: mockSize(tokens.typeScale.hero, scale), lineHeight: tokens.typeScale.lineHeight, color: c.text.base }}>
+            Ship faster,<br/>look better.
+          </h1>
+          <p style={{ margin:0, fontSize: mockSize(tokens.typeScale.body, scale * 0.85), color: c.text.muted, lineHeight:1.5 }}>
+            AI-extracted design tokens, ready to drop into your codebase.
+          </p>
+          <div style={{ display:'flex', gap:6 }}>
+            <button style={btnStyle}>Start free</button>
+            <button style={{ ...btnStyle, background:'transparent', color: c.text.base, border:`1px solid ${c.border}` }}>Watch demo</button>
+          </div>
+        </div>
+        <div style={{ width:90, margin:'10px 10px 10px 0', borderRadius: r.large, background:`linear-gradient(135deg, ${c.brand.primary}40, ${c.brand.secondary}30)`, border:`1px solid ${c.border}`, display:'flex', alignItems:'center', justifyContent:'center', fontSize:20, flexShrink:0 }}>
+          ◈
+        </div>
+      </div>
+      {/* Feature row */}
+      <div style={{ display:'grid', gridTemplateColumns:'repeat(3,1fr)', gap:6, padding:`6px 10px ${Math.round(8 * gap)}px` }}>
+        {[['◈','Tokens'],['⊡','Preview'],['⇿','Compare']].map(([icon, label]) => (
+          <div key={label} style={{ background: c.background.card, border:`1px solid ${c.border}`, borderRadius: r.medium, padding: components.card.padding, boxShadow: components.card.shadow, display:'flex', alignItems:'center', gap:6 }}>
+            <span style={{ fontSize:12, color: c.brand.primary }}>{icon}</span>
+            <span style={{ fontSize: mockSize(tokens.typeScale.label, scale), fontWeight: t.headingWeight, color: c.text.base }}>{label}</span>
+          </div>
+        ))}
+      </div>
+    </div>
+  );
+}
+
+// ── MockPage — picks renderer based on layoutStructure.pattern ────────────
+function MockPage({ tokens }: { tokens: DesignTokens }) {
+  const heroPx = parsePx(tokens.typeScale.hero);
+  // Scale so that the largest headline fits comfortably in ~50px within the 260px mock
+  const scale = Math.min(50 / heroPx, 0.55);
+
+  const pattern = tokens.layoutStructure?.pattern ?? 'landing';
+  const props = { tokens, scale };
+
+  return (
+    <div style={{ height:'100%', overflow:'hidden' }}>
+      {pattern === 'hero-centric' && <HeroCentricLayout {...props} />}
+      {pattern === 'card-grid'    && <CardGridLayout    {...props} />}
+      {pattern === 'editorial'    && <EditorialLayout   {...props} />}
+      {pattern === 'dashboard'    && <DashboardLayout   {...props} />}
+      {pattern === 'landing'      && <LandingLayout     {...props} />}
     </div>
   );
 }
@@ -179,6 +379,15 @@ function BentoGrid({ tokens, siteUrl }: { tokens: DesignTokens; siteUrl?: string
           <div style={{ display:'flex', gap:8, flexWrap:'wrap' }}>
             {swatches.map(s => <ColorSwatch key={s.label} {...s} />)}
           </div>
+          {tokens.layoutVibe && (
+            <div style={{ marginTop:12, display:'flex', gap:5, flexWrap:'wrap' }}>
+              {tokens.layoutVibe.split(',').map(tag => tag.trim()).filter(Boolean).map(tag => (
+                <span key={tag} style={{ padding:'2px 8px', borderRadius:6, background:'rgba(167,139,250,.08)', border:'1px solid rgba(167,139,250,.2)', fontSize:10, fontFamily:monoFont, color:'#c4b5fd' }}>
+                  {tag}
+                </span>
+              ))}
+            </div>
+          )}
         </div>
       </div>
 
@@ -237,11 +446,13 @@ function BentoGrid({ tokens, siteUrl }: { tokens: DesignTokens; siteUrl?: string
           <p style={cellLabelStyle}>Raw Tokens</p>
           <div style={{ display:'flex', flexDirection:'column', gap:0 }}>
             {[
-              ['colors.brand.primary',  c.brand.primary],
-              ['spacing.base',          `${spacing.base} ${spacing.scale}`],
-              ['radius.medium',         r.medium],
-              ['typo.headingWeight',    t.headingWeight],
-              ['colors.border',         c.border],
+              ['colors.brand.primary',     c.brand.primary],
+              ['spacing.base',             `${spacing.base} ${spacing.scale}`],
+              ['radius.medium',            r.medium],
+              ['typo.headingWeight',       t.headingWeight],
+              ['typeScale.hero',           tokens.typeScale.hero],
+              ['layout.pattern',           tokens.layoutStructure.pattern],
+              ['layout.density',           tokens.layoutStructure.density],
             ].map(([key, val]) => (
               <div key={key} style={{ display:'flex', justifyContent:'space-between', alignItems:'center', padding:'6px 0', borderBottom:'1px solid rgba(255,255,255,.065)' }}>
                 <span style={{ fontSize:10.5, fontFamily:monoFont, color:'rgba(255,255,255,.35)' }}>{key}</span>
@@ -296,10 +507,13 @@ function BentoGrid({ tokens, siteUrl }: { tokens: DesignTokens; siteUrl?: string
 
 // ── ComponentPreview tab ──────────────────────────────────────────────────
 function ComponentPreview({ tokens }: { tokens: DesignTokens }) {
-  const { colors: c, borderRadius: r, typography: t, spacing } = tokens;
-  const u  = spacing.base;
-  const px = (n: number) => `${u * n}px`;
-  const btnBase: React.CSSProperties = { borderRadius: r.small, padding:`${px(1.5)} ${px(4)}`, fontFamily: t.sans, fontSize:13, cursor:'default', border:'none' };
+  const { colors: c, borderRadius: r, typography: t, components } = tokens;
+  const btnBase: React.CSSProperties = {
+    borderRadius: r.small,
+    padding: `${components.button.paddingY} ${components.button.paddingX}`,
+    letterSpacing: components.button.letterSpacing,
+    fontFamily: t.sans, fontSize:13, cursor:'default', border:'none',
+  };
 
   return (
     <div style={{ display:'flex', flexDirection:'column', gap:12 }}>
@@ -318,10 +532,10 @@ function ComponentPreview({ tokens }: { tokens: DesignTokens }) {
         {
           title: 'Card',
           content: (
-            <div style={{ background: c.background.card, border:`1px solid ${c.border}`, borderRadius: r.medium, padding: px(4), fontFamily: t.sans, maxWidth:300 }}>
-              <div style={{ width:'100%', height:64, borderRadius: r.small, background: c.brand.primary, opacity:.15, marginBottom: px(3) }} />
-              <h3 style={{ fontWeight: t.headingWeight, color: c.text.base, fontSize:14, marginBottom: px(1) }}>Card Title</h3>
-              <p style={{ color: c.text.muted, fontSize:12, lineHeight:1.6, marginBottom: px(3) }}>Body text showing colour, font stack, and line-height rhythm.</p>
+            <div style={{ background: c.background.card, border:`1px solid ${c.border}`, borderRadius: r.medium, padding: tokens.components.card.padding, boxShadow: tokens.components.card.shadow, fontFamily: t.sans, maxWidth:300 }}>
+              <div style={{ width:'100%', height:64, borderRadius: r.small, background: c.brand.primary, opacity:.15, marginBottom:12 }} />
+              <h3 style={{ fontWeight: t.headingWeight, color: c.text.base, fontSize:14, marginBottom:4 }}>Card Title</h3>
+              <p style={{ color: c.text.muted, fontSize:12, lineHeight: tokens.typeScale.lineHeight, marginBottom:12 }}>Body text showing colour, font stack, and line-height rhythm.</p>
               <button style={{ ...btnBase, background: c.brand.primary, color:'#fff', fontWeight: t.headingWeight }}>Action</button>
             </div>
           ),
@@ -330,8 +544,8 @@ function ComponentPreview({ tokens }: { tokens: DesignTokens }) {
           title: 'Form Inputs',
           content: (
             <div style={{ display:'flex', flexWrap:'wrap', gap:10 }}>
-              <input readOnly placeholder="Placeholder" style={{ border:`1px solid ${c.border}`, borderRadius: r.small, padding:`${px(1.5)} ${px(3)}`, background: c.background.card, color: c.text.muted, fontSize:13, fontFamily: t.sans, outline:'none', width:200 }} />
-              <input readOnly defaultValue="Active / focused" style={{ border:`1.5px solid ${c.brand.primary}`, borderRadius: r.small, padding:`${px(1.5)} ${px(3)}`, background: c.background.card, color: c.text.base, fontSize:13, fontFamily: t.sans, outline:'none', width:200 }} />
+              <input readOnly placeholder="Placeholder" style={{ border:`1px solid ${c.border}`, borderRadius: r.small, padding:`${tokens.components.button.paddingY} ${tokens.components.button.paddingX}`, background: c.background.card, color: c.text.muted, fontSize:13, fontFamily: t.sans, outline:'none', width:200 }} />
+              <input readOnly defaultValue="Active / focused" style={{ border:`1.5px solid ${c.brand.primary}`, borderRadius: r.small, padding:`${tokens.components.button.paddingY} ${tokens.components.button.paddingX}`, background: c.background.card, color: c.text.base, fontSize:13, fontFamily: t.sans, outline:'none', width:200 }} />
             </div>
           ),
         },
