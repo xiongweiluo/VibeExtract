@@ -1,9 +1,7 @@
 'use client';
 
-import { useState, useRef } from 'react';
-import { Loader2, Sparkles, AlertCircle } from 'lucide-react';
-import { Button } from '@/components/ui/button';
-import { Input } from '@/components/ui/input';
+import { useState, useRef, useEffect } from 'react';
+import { Loader2, Sparkles, AlertCircle, ArrowRight } from 'lucide-react';
 import { ThemePreview } from '@/components/playground/ThemePreview';
 import { VibeEdit } from '@/components/playground/VibeEdit';
 import type { DesignTokens } from '@/types';
@@ -24,51 +22,43 @@ function isValidUrl(value: string): boolean {
   try {
     const { protocol } = new URL(value);
     return protocol === 'http:' || protocol === 'https:';
-  } catch {
-    return false;
-  }
+  } catch { return false; }
 }
 
 type ExtractStep = 'screenshot' | 'extract' | 'done' | 'error';
-
-interface ExtractEvent {
-  step: ExtractStep;
-  message?: string;
-  tokens?: DesignTokens;
-}
+interface ExtractEvent { step: ExtractStep; message?: string; tokens?: DesignTokens; }
 
 // ── LoadingOverlay ────────────────────────────────────────────────────────
 
 function LoadingOverlay({ stepIndex }: { stepIndex: number }) {
   const current = PROGRESS_STEPS[Math.min(stepIndex, PROGRESS_STEPS.length - 1)];
   return (
-    <div className="fixed inset-0 z-50 flex flex-col items-center justify-center bg-background/80 backdrop-blur-sm">
+    <div style={{ position:'fixed', inset:0, zIndex:50, display:'flex', flexDirection:'column', alignItems:'center', justifyContent:'center', background:'rgba(7,7,13,0.88)', backdropFilter:'blur(20px)', WebkitBackdropFilter:'blur(20px)' }}>
       {/* Scan line */}
-      <div className="pointer-events-none absolute inset-0 overflow-hidden opacity-20">
-        <div className="animate-scan-line h-px w-full bg-gradient-to-r from-transparent via-primary to-transparent" />
+      <div style={{ position:'absolute', inset:0, overflow:'hidden', opacity:0.15, pointerEvents:'none' }}>
+        <div style={{ height:1, width:'100%', background:'linear-gradient(90deg, transparent, #a78bfa, transparent)', animation:'scan-line 2.4s linear infinite' }} />
       </div>
 
-      <div className="relative flex flex-col items-center gap-5 px-8 text-center">
-        <div className="relative flex h-16 w-16 items-center justify-center">
-          <span className="absolute inset-0 animate-ping rounded-full border border-primary/30" />
-          <Sparkles className="animate-pulse-slow h-7 w-7 text-primary" />
+      <div style={{ display:'flex', flexDirection:'column', alignItems:'center', gap:20, textAlign:'center', padding:'0 32px' }}>
+        {/* Icon ring */}
+        <div style={{ position:'relative', display:'flex', alignItems:'center', justifyContent:'center', width:64, height:64 }}>
+          <span style={{ position:'absolute', inset:0, border:'1px solid rgba(167,139,250,0.3)', borderRadius:'50%', animation:'pulse-slow 1.5s ease-in-out infinite' }} />
+          <Sparkles style={{ width:28, height:28, color:'#a78bfa', animation:'pulse-slow 2s ease-in-out infinite' }} />
         </div>
 
-        <div className="space-y-1">
-          <p className="animate-pulse-slow text-lg font-semibold tracking-tight text-foreground">
+        <div>
+          <p style={{ fontSize:16, fontWeight:600, color:'rgba(255,255,255,0.9)', marginBottom:4, fontFamily:'var(--font-syne, sans-serif)', animation:'pulse-slow 2s ease-in-out infinite' }}>
             {current.label}
           </p>
-          <p className="font-mono text-xs text-muted-foreground">{current.sub}</p>
+          <p style={{ fontSize:12, fontFamily:'var(--font-dm-mono, monospace)', color:'rgba(255,255,255,0.35)' }}>
+            {current.sub}
+          </p>
         </div>
 
-        <div className="flex gap-1.5">
+        {/* Progress dots */}
+        <div style={{ display:'flex', gap:6 }}>
           {PROGRESS_STEPS.map((_, i) => (
-            <span
-              key={i}
-              className={`h-1.5 w-1.5 rounded-full transition-colors duration-300 ${
-                i <= stepIndex ? 'bg-primary' : 'bg-muted'
-              }`}
-            />
+            <span key={i} style={{ width:6, height:6, borderRadius:'50%', background: i <= stepIndex ? '#a78bfa' : 'rgba(255,255,255,0.15)', transition:'background 0.3s' }} />
           ))}
         </div>
       </div>
@@ -79,20 +69,35 @@ function LoadingOverlay({ stepIndex }: { stepIndex: number }) {
 // ── Main page ─────────────────────────────────────────────────────────────
 
 export default function Home() {
-  const [url, setUrl]               = useState('');
-  const [urlError, setUrlError]     = useState('');
-  const [loading, setLoading]       = useState(false);
-  const [stepIndex, setStepIndex]   = useState(0);
-  const [tokens, setTokens]               = useState<DesignTokens | null>(null);
-  /** Frozen snapshot from extraction — never mutated by Vibe Edit */
-  const [originalTokens, setOriginalTokens] = useState<DesignTokens | null>(null);
-  /** URL captured at the moment of extraction — stable for ThemePreview */
-  const [submittedUrl, setSubmittedUrl] = useState('');
-  const [error, setError]           = useState('');
-  const timerRef                    = useRef<ReturnType<typeof setInterval> | null>(null);
+  const [url, setUrl]                         = useState('');
+  const [urlError, setUrlError]               = useState('');
+  const [loading, setLoading]                 = useState(false);
+  const [stepIndex, setStepIndex]             = useState(0);
+  const [tokens, setTokens]                   = useState<DesignTokens | null>(null);
+  const [originalTokens, setOriginalTokens]   = useState<DesignTokens | null>(null);
+  const [submittedUrl, setSubmittedUrl]       = useState('');
+  const [error, setError]                     = useState('');
+  const timerRef                              = useRef<ReturnType<typeof setInterval> | null>(null);
+  const inputCardRef                          = useRef<HTMLDivElement>(null);
+
+  // Animated conic-gradient border on the input card
+  useEffect(() => {
+    let raf: number;
+    let angle = 0;
+    function animate() {
+      angle = (angle + 0.35) % 360;
+      if (inputCardRef.current) {
+        inputCardRef.current.style.background =
+          `conic-gradient(from ${angle}deg, rgba(99,102,241,.55), rgba(167,139,250,.35), rgba(240,171,252,.4), rgba(56,189,248,.3), rgba(99,102,241,.55))`;
+      }
+      raf = requestAnimationFrame(animate);
+    }
+    raf = requestAnimationFrame(animate);
+    return () => cancelAnimationFrame(raf);
+  }, []);
 
   function validateUrl(value: string): boolean {
-    if (!value.trim())          { setUrlError('请输入网站 URL'); return false; }
+    if (!value.trim())             { setUrlError('请输入网站 URL'); return false; }
     if (!isValidUrl(value.trim())) { setUrlError('请输入有效的 http:// 或 https:// 网址'); return false; }
     setUrlError('');
     return true;
@@ -139,7 +144,6 @@ export default function Home() {
       while (true) {
         const { done, value } = await reader.read();
         if (done) break;
-
         buf += decoder.decode(value, { stream: true });
         const chunks = buf.split('\n\n');
         buf = chunks.pop() ?? '';
@@ -147,13 +151,11 @@ export default function Home() {
         for (const chunk of chunks) {
           const data = chunk.startsWith('data: ') ? chunk.slice(6) : chunk;
           if (!data.trim()) continue;
-
           let event: ExtractEvent;
           try { event = JSON.parse(data); } catch { continue; }
 
           if (event.step === 'screenshot') setStepIndex(0);
           if (event.step === 'extract')    setStepIndex(2);
-
           if (event.step === 'done' && event.tokens) {
             stopTimer();
             setStepIndex(PROGRESS_STEPS.length - 1);
@@ -175,118 +177,153 @@ export default function Home() {
     }
   }
 
+  // ── Shared styles ──
+  const monoFont   = 'var(--font-dm-mono, "DM Mono", monospace)';
+  const syneFont   = 'var(--font-syne, "Syne", sans-serif)';
+
   return (
     <>
       {loading && <LoadingOverlay stepIndex={stepIndex} />}
 
-      <main className="relative flex min-h-screen flex-col items-center justify-start overflow-hidden px-4 pt-24 pb-16">
-        {/* Background grid */}
-        <div
-          className="pointer-events-none absolute inset-0 opacity-[0.03]"
-          style={{
-            backgroundImage:
-              'linear-gradient(hsl(var(--border)) 1px, transparent 1px), linear-gradient(90deg, hsl(var(--border)) 1px, transparent 1px)',
-            backgroundSize: '40px 40px',
-          }}
-        />
+      {/* ── Fixed background layers ── */}
+      <div style={{ position:'fixed', inset:0, pointerEvents:'none', zIndex:0 }}>
+        {/* Dot grid */}
+        <div style={{ position:'absolute', inset:0, backgroundImage:'linear-gradient(rgba(255,255,255,.022) 1px,transparent 1px),linear-gradient(90deg,rgba(255,255,255,.022) 1px,transparent 1px)', backgroundSize:'36px 36px' }} />
+        {/* Radial glow — top centre */}
+        <div style={{ position:'absolute', top:'-20%', left:'50%', transform:'translateX(-50%)', width:900, height:700, background:'radial-gradient(ellipse at center, rgba(124,109,240,.13) 0%, rgba(99,102,241,.07) 35%, transparent 70%)', filter:'blur(1px)' }} />
+        {/* Radial glow — bottom right */}
+        <div style={{ position:'absolute', bottom:'10%', right:'-10%', width:600, height:500, background:'radial-gradient(ellipse at center, rgba(56,189,248,.06) 0%, transparent 65%)' }} />
+      </div>
 
-        {/* Glow blob */}
-        <div className="pointer-events-none absolute top-0 left-1/2 h-96 w-96 -translate-x-1/2 rounded-full bg-primary/10 blur-3xl" />
+      {/* ── Sticky nav ── */}
+      <nav style={{ position:'sticky', top:0, zIndex:100, padding:'0', borderBottom:'1px solid rgba(255,255,255,.065)', background:'rgba(7,7,13,.72)', backdropFilter:'blur(20px) saturate(180%)', WebkitBackdropFilter:'blur(20px) saturate(180%)' }}>
+        <div style={{ maxWidth:1100, margin:'0 auto', padding:'16px 24px', display:'flex', alignItems:'center', justifyContent:'space-between' }}>
+          <div style={{ fontFamily:syneFont, fontWeight:800, fontSize:17, letterSpacing:'-0.4px' }}>
+            Vibe<span style={{ color:'#a78bfa' }}>Extractor</span>
+          </div>
+          <ul style={{ display:'flex', gap:32, listStyle:'none', margin:0, padding:0 }}>
+            {['文档','示例','API'].map(l => (
+              <li key={l}><a href="#" style={{ color:'rgba(255,255,255,.42)', textDecoration:'none', fontSize:13, transition:'color .2s' }}
+                onMouseEnter={e => (e.currentTarget.style.color='rgba(255,255,255,.72)')}
+                onMouseLeave={e => (e.currentTarget.style.color='rgba(255,255,255,.42)')}>
+                {l}
+              </a></li>
+            ))}
+          </ul>
+          <div style={{ display:'inline-flex', alignItems:'center', gap:5, padding:'4px 10px', border:'1px solid rgba(124,109,240,.3)', borderRadius:100, background:'rgba(124,109,240,.08)', fontSize:11, fontFamily:monoFont, color:'#a78bfa', letterSpacing:'0.02em' }}>
+            <span style={{ width:5, height:5, borderRadius:'50%', background:'#a78bfa', animation:'pulse-dot 2s ease-in-out infinite', flexShrink:0 }} />
+            Claude Vision · v2.1
+          </div>
+        </div>
+      </nav>
 
-        {/* Hero */}
-        <section className="relative z-10 flex flex-col items-center gap-4 text-center animate-fade-in">
-          <div className="inline-flex items-center gap-1.5 rounded-full border border-primary/30 bg-primary/10 px-3 py-1 text-xs font-medium text-primary">
-            <Sparkles className="h-3 w-3" />
-            Powered by Claude Vision
+      <main style={{ position:'relative', zIndex:1 }}>
+        {/* ── Hero ── */}
+        <section style={{ maxWidth:1100, margin:'0 auto', padding:'100px 24px 72px', textAlign:'center' }}>
+
+          {/* Eyebrow */}
+          <div style={{ display:'inline-flex', alignItems:'center', gap:6, padding:'5px 14px', border:'1px solid rgba(255,255,255,.12)', borderRadius:100, background:'rgba(255,255,255,.03)', fontSize:11.5, fontFamily:monoFont, color:'rgba(255,255,255,.42)', letterSpacing:'0.04em', marginBottom:32, animation:'fade-up .6s ease both' }}>
+            <span>✦</span>
+            Powered by Claude Vision &nbsp;·&nbsp; Design Token Extractor
           </div>
 
-          <h1 className="text-5xl font-extrabold tracking-tight sm:text-6xl md:text-7xl">
-            <span className="bg-gradient-to-br from-white via-white/90 to-white/40 bg-clip-text text-transparent">
-              Vibe
+          {/* Title */}
+          <h1 style={{ fontFamily:syneFont, fontSize:'clamp(52px, 8vw, 88px)', fontWeight:800, lineHeight:1.0, letterSpacing:'-0.03em', marginBottom:22, animation:'fade-up .6s .08s ease both' }}>
+            <span style={{ display:'block', background:'linear-gradient(135deg, #fff 0%, rgba(255,255,255,.65) 100%)', WebkitBackgroundClip:'text', WebkitTextFillColor:'transparent', backgroundClip:'text' }}>
+              任意网站
             </span>
-            <span className="bg-gradient-to-br from-primary via-violet-400 to-fuchsia-500 bg-clip-text text-transparent">
-              Extractor
+            <span style={{ display:'block', background:'linear-gradient(135deg, #7c6df0 0%, #a78bfa 50%, #f0abfc 100%)', WebkitBackgroundClip:'text', WebkitTextFillColor:'transparent', backgroundClip:'text' }}>
+              Design DNA
             </span>
           </h1>
 
-          <p className="max-w-md text-base leading-relaxed text-muted-foreground">
-            输入任意网站 URL，AI 自动提取完整的&nbsp;
-            <span className="font-medium text-foreground/80">Design Token</span>&nbsp;系统——
-            色彩、字体、间距、圆角，一键输出。
+          {/* Subtitle */}
+          <p style={{ maxWidth:460, margin:'0 auto 52px', color:'rgba(255,255,255,.42)', fontSize:15.5, lineHeight:1.7, fontWeight:300, animation:'fade-up .6s .14s ease both' }}>
+            输入 URL，<strong style={{ color:'rgba(255,255,255,.72)', fontWeight:400 }}>AI 自动提取</strong>完整的 Design Token 系统——
+            色彩、字体、间距、圆角，一键输出可用于生产的设计语言。
           </p>
-        </section>
 
-        {/* Input card */}
-        <div className="relative z-10 mt-12 w-full max-w-2xl [animation-delay:120ms] animate-fade-in">
-          <div className="rounded-2xl border border-border/60 bg-muted/20 p-6 shadow-2xl shadow-black/40 backdrop-blur-sm">
-            <label className="mb-2 block text-sm font-medium text-foreground/80">
-              网站地址
-            </label>
+          {/* Input card */}
+          <div style={{ maxWidth:620, margin:'0 auto', animation:'fade-up .6s .2s ease both' }}>
+            {/* Animated gradient border wrapper */}
+            <div ref={inputCardRef} style={{ borderRadius:20, padding:'1.5px' }}>
+              <div style={{ borderRadius:'18.5px', background:'rgba(10,10,18,.92)', backdropFilter:'blur(24px)', WebkitBackdropFilter:'blur(24px)', padding:22 }}>
+                <div style={{ fontSize:11, fontFamily:monoFont, letterSpacing:'0.08em', color:'rgba(255,255,255,.24)', textTransform:'uppercase', marginBottom:10 }}>
+                  目标网站
+                </div>
+                <div style={{ display:'flex', gap:10, alignItems:'center' }}>
+                  <input
+                    type="url"
+                    placeholder="https://stripe.com"
+                    value={url}
+                    onChange={e => { setUrl(e.target.value); if (urlError) validateUrl(e.target.value); }}
+                    onKeyDown={e => e.key === 'Enter' && !loading && handleExtract()}
+                    disabled={loading}
+                    style={{ flex:1, height:46, background:'rgba(255,255,255,.04)', border:'1px solid rgba(255,255,255,.065)', borderRadius:11, padding:'0 16px', fontFamily:monoFont, fontSize:13, color:'rgba(255,255,255,.72)', outline:'none', transition:'border-color .2s, background .2s' }}
+                    onFocus={e => { e.currentTarget.style.borderColor='rgba(124,109,240,.45)'; e.currentTarget.style.background='rgba(124,109,240,.04)'; }}
+                    onBlur={e => { e.currentTarget.style.borderColor='rgba(255,255,255,.065)'; e.currentTarget.style.background='rgba(255,255,255,.04)'; }}
+                  />
+                  <button
+                    onClick={handleExtract}
+                    disabled={loading}
+                    style={{ height:46, padding:'0 20px', background:'linear-gradient(135deg, #7c6df0 0%, #a78bfa 100%)', border:'none', borderRadius:11, fontFamily:syneFont, fontWeight:700, fontSize:13, color:'#fff', cursor: loading ? 'not-allowed' : 'pointer', whiteSpace:'nowrap', transition:'opacity .2s, transform .15s', display:'flex', alignItems:'center', gap:7, opacity: loading ? 0.65 : 1 }}
+                    onMouseEnter={e => { if (!loading) { e.currentTarget.style.opacity='0.88'; e.currentTarget.style.transform='translateY(-1px)'; }}}
+                    onMouseLeave={e => { e.currentTarget.style.opacity= loading ? '0.65' : '1'; e.currentTarget.style.transform='translateY(0)'; }}
+                  >
+                    {loading
+                      ? <><Loader2 style={{ width:13, height:13, animation:'spin 1s linear infinite' }} />提取中…</>
+                      : <><ArrowRight style={{ width:13, height:13 }} />开始提取</>
+                    }
+                  </button>
+                </div>
 
-            <div className="flex flex-col gap-3 sm:flex-row">
-              <div className="flex-1 space-y-1">
-                <Input
-                  type="url"
-                  placeholder="https://stripe.com"
-                  value={url}
-                  onChange={(e) => { setUrl(e.target.value); if (urlError) validateUrl(e.target.value); }}
-                  onKeyDown={(e) => e.key === 'Enter' && !loading && handleExtract()}
-                  disabled={loading}
-                  className="h-12 bg-background/60 text-base focus-visible:ring-primary"
-                />
                 {urlError && (
-                  <p className="flex items-center gap-1 text-xs text-red-400">
-                    <AlertCircle className="h-3 w-3" />
-                    {urlError}
+                  <p style={{ display:'flex', alignItems:'center', gap:4, marginTop:8, fontSize:11.5, color:'#f87171', fontFamily:monoFont }}>
+                    <AlertCircle style={{ width:12, height:12 }} />{urlError}
                   </p>
                 )}
+
+                <div style={{ marginTop:12, fontSize:11.5, color:'rgba(255,255,255,.24)', fontFamily:monoFont, display:'flex', alignItems:'center', gap:8 }}>
+                  <span>公开网站即可</span>
+                  <span style={{ color:'rgba(255,255,255,.12)' }}>·</span>
+                  <span>通常 8–15 秒</span>
+                  <span style={{ color:'rgba(255,255,255,.12)' }}>·</span>
+                  <span>输出 JSON / CSS Vars / Tailwind</span>
+                </div>
               </div>
-
-              <Button
-                size="lg"
-                onClick={handleExtract}
-                disabled={loading}
-                className="h-12 min-w-[130px] bg-primary font-semibold hover:bg-primary/90"
-              >
-                {loading ? (
-                  <><Loader2 className="h-4 w-4 animate-spin" />提取中…</>
-                ) : (
-                  <><Sparkles className="h-4 w-4" />开始提取</>
-                )}
-              </Button>
             </div>
-
-            <p className="mt-3 text-xs text-muted-foreground">
-              支持任意公开网站 · 通常需要 8–15 秒
-            </p>
           </div>
-        </div>
+        </section>
 
-        {/* Error */}
+        {/* ── Error ── */}
         {error && !loading && (
-          <div className="relative z-10 mt-6 flex w-full max-w-2xl items-start gap-3 rounded-xl border border-red-500/30 bg-red-500/10 p-4 text-sm text-red-400 animate-fade-in">
-            <AlertCircle className="mt-0.5 h-4 w-4 flex-shrink-0" />
-            <div>
-              <p className="font-medium">提取失败</p>
-              <p className="mt-0.5 text-xs text-red-400/80">{error}</p>
+          <div style={{ maxWidth:1100, margin:'0 auto', padding:'0 24px 32px' }}>
+            <div style={{ display:'flex', alignItems:'flex-start', gap:12, padding:16, borderRadius:14, border:'1px solid rgba(248,113,113,.25)', background:'rgba(248,113,113,.08)', animation:'fade-up .4s ease both' }}>
+              <AlertCircle style={{ width:16, height:16, color:'#f87171', flexShrink:0, marginTop:1 }} />
+              <div>
+                <p style={{ fontSize:13, fontWeight:600, color:'#f87171', marginBottom:2 }}>提取失败</p>
+                <p style={{ fontSize:12, color:'rgba(248,113,113,.7)', fontFamily:'var(--font-dm-mono, monospace)' }}>{error}</p>
+              </div>
             </div>
           </div>
         )}
 
-        {/* Results */}
+        {/* ── Results ── */}
         {tokens && !loading && (
-          <div className="relative z-10 mt-10 w-full max-w-4xl space-y-6">
+          <section style={{ maxWidth:1100, margin:'0 auto', padding:'0 24px 80px', animation:'fade-up .5s ease both' }}>
             <ThemePreview tokens={tokens} siteUrl={submittedUrl} />
             {originalTokens && (
-              <VibeEdit
-                tokens={tokens}
-                originalTokens={originalTokens}
-                onUpdate={setTokens}
-              />
+              <div style={{ marginTop:24 }}>
+                <VibeEdit tokens={tokens} originalTokens={originalTokens} onUpdate={setTokens} />
+              </div>
             )}
-          </div>
+          </section>
         )}
       </main>
+
+      <style>{`
+        @keyframes spin { to { transform: rotate(360deg); } }
+      `}</style>
     </>
   );
 }
