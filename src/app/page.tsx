@@ -1,21 +1,23 @@
 'use client';
 
 import { useState, useRef } from 'react';
-import { Loader2, Sparkles, AlertCircle, CheckCircle2 } from 'lucide-react';
+import { Loader2, Sparkles, AlertCircle } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
+import { ThemePreview } from '@/components/playground/ThemePreview';
 import type { DesignTokens } from '@/types';
 
-// ── Progress messages cycled during extraction ─────────────────────────────
+// ── Progress steps ────────────────────────────────────────────────────────
+
 const PROGRESS_STEPS = [
-  { step: 'screenshot', label: '正在捕获页面截图…',          sub: 'Launching headless browser' },
-  { step: 'extract',    label: 'AI 正在扫描视觉语义…',        sub: 'Claude Vision analysing layout' },
-  { step: 'extract',    label: '解析色彩层级与品牌基因…',     sub: 'Mapping colour palette' },
-  { step: 'extract',    label: '提取字体栈与间距节奏…',       sub: 'Reading typographic DNA' },
-  { step: 'extract',    label: '构建 Design Token 矩阵…',    sub: 'Assembling token schema' },
+  { label: '正在捕获页面截图…',       sub: 'Launching headless browser' },
+  { label: 'AI 正在扫描视觉语义…',     sub: 'Claude Vision analysing layout' },
+  { label: '解析色彩层级与品牌基因…',  sub: 'Mapping colour palette' },
+  { label: '提取字体栈与间距节奏…',    sub: 'Reading typographic DNA' },
+  { label: '构建 Design Token 矩阵…', sub: 'Assembling token schema' },
 ] as const;
 
-// ── Helpers ─────────────────────────────────────────────────────────────────
+// ── Helpers ───────────────────────────────────────────────────────────────
 
 function isValidUrl(value: string): boolean {
   try {
@@ -32,104 +34,9 @@ interface ExtractEvent {
   step: ExtractStep;
   message?: string;
   tokens?: DesignTokens;
-  code?: string;
 }
 
-// ── Sub-components ───────────────────────────────────────────────────────────
-
-function TokenSwatch({ label, value }: { label: string; value: string }) {
-  return (
-    <div className="flex items-center gap-2">
-      <span
-        className="h-5 w-5 rounded-full border border-white/10 shadow-inner flex-shrink-0"
-        style={{ background: value }}
-      />
-      <span className="text-xs text-muted-foreground font-mono truncate">{label}</span>
-      <span className="ml-auto text-xs font-mono text-foreground/80">{value}</span>
-    </div>
-  );
-}
-
-function TokenCard({ title, children }: { title: string; children: React.ReactNode }) {
-  return (
-    <div className="rounded-xl border border-border/60 bg-muted/30 p-4 space-y-2 animate-fade-in">
-      <p className="text-xs font-semibold uppercase tracking-widest text-muted-foreground">{title}</p>
-      {children}
-    </div>
-  );
-}
-
-function TokenRow({ label, value }: { label: string; value: string | number }) {
-  return (
-    <div className="flex items-center justify-between gap-4">
-      <span className="text-xs text-muted-foreground">{label}</span>
-      <span className="text-xs font-mono text-foreground/90">{String(value)}</span>
-    </div>
-  );
-}
-
-function TokenResults({ tokens }: { tokens: DesignTokens }) {
-  const { colors, spacing, borderRadius, typography } = tokens;
-  return (
-    <div className="w-full max-w-2xl mx-auto mt-10 space-y-4 animate-fade-in">
-      <div className="flex items-center gap-2 text-sm font-medium text-green-400">
-        <CheckCircle2 className="h-4 w-4" />
-        提取完成
-      </div>
-
-      <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-        {/* Colors */}
-        <TokenCard title="Brand">
-          <TokenSwatch label="primary"   value={colors.brand.primary} />
-          <TokenSwatch label="secondary" value={colors.brand.secondary} />
-        </TokenCard>
-
-        <TokenCard title="Background">
-          <TokenSwatch label="main" value={colors.background.main} />
-          <TokenSwatch label="card" value={colors.background.card} />
-        </TokenCard>
-
-        <TokenCard title="Text">
-          <TokenSwatch label="base"  value={colors.text.base} />
-          <TokenSwatch label="muted" value={colors.text.muted} />
-        </TokenCard>
-
-        <TokenCard title="Border">
-          <TokenSwatch label="border" value={colors.border} />
-        </TokenCard>
-
-        <TokenCard title="Spacing">
-          <TokenRow label="base"  value={colors.border} />
-          <TokenRow label="base"  value={spacing.base} />
-          <TokenRow label="scale" value={spacing.scale} />
-        </TokenCard>
-
-        <TokenCard title="Border Radius">
-          <TokenRow label="small"  value={borderRadius.small} />
-          <TokenRow label="medium" value={borderRadius.medium} />
-          <TokenRow label="large"  value={borderRadius.large} />
-        </TokenCard>
-
-        <TokenCard title="Typography">
-          <TokenRow label="font-family"    value={typography.sans} />
-          <TokenRow label="heading-weight" value={typography.headingWeight} />
-        </TokenCard>
-      </div>
-
-      {/* Raw JSON */}
-      <details className="group rounded-xl border border-border/40 overflow-hidden">
-        <summary className="cursor-pointer px-4 py-3 text-xs text-muted-foreground hover:text-foreground transition-colors select-none">
-          查看原始 JSON
-        </summary>
-        <pre className="px-4 pb-4 text-xs font-mono text-foreground/70 overflow-auto max-h-60">
-          {JSON.stringify(tokens, null, 2)}
-        </pre>
-      </details>
-    </div>
-  );
-}
-
-// ── Loading overlay ─────────────────────────────────────────────────────────
+// ── LoadingOverlay ────────────────────────────────────────────────────────
 
 function LoadingOverlay({ stepIndex }: { stepIndex: number }) {
   const current = PROGRESS_STEPS[Math.min(stepIndex, PROGRESS_STEPS.length - 1)];
@@ -140,21 +47,19 @@ function LoadingOverlay({ stepIndex }: { stepIndex: number }) {
         <div className="animate-scan-line h-px w-full bg-gradient-to-r from-transparent via-primary to-transparent" />
       </div>
 
-      {/* Content */}
       <div className="relative flex flex-col items-center gap-5 px-8 text-center">
         <div className="relative flex h-16 w-16 items-center justify-center">
-          <span className="absolute inset-0 rounded-full border border-primary/30 animate-ping" />
-          <Sparkles className="h-7 w-7 text-primary animate-pulse-slow" />
+          <span className="absolute inset-0 animate-ping rounded-full border border-primary/30" />
+          <Sparkles className="animate-pulse-slow h-7 w-7 text-primary" />
         </div>
 
         <div className="space-y-1">
-          <p className="text-lg font-semibold tracking-tight text-foreground animate-pulse-slow">
+          <p className="animate-pulse-slow text-lg font-semibold tracking-tight text-foreground">
             {current.label}
           </p>
-          <p className="text-xs text-muted-foreground font-mono">{current.sub}</p>
+          <p className="font-mono text-xs text-muted-foreground">{current.sub}</p>
         </div>
 
-        {/* Progress dots */}
         <div className="flex gap-1.5">
           {PROGRESS_STEPS.map((_, i) => (
             <span
@@ -170,57 +75,55 @@ function LoadingOverlay({ stepIndex }: { stepIndex: number }) {
   );
 }
 
-// ── Main page ───────────────────────────────────────────────────────────────
+// ── Main page ─────────────────────────────────────────────────────────────
 
 export default function Home() {
-  const [url, setUrl]           = useState('');
-  const [urlError, setUrlError] = useState('');
-  const [loading, setLoading]   = useState(false);
-  const [stepIndex, setStepIndex] = useState(0);
-  const [tokens, setTokens]     = useState<DesignTokens | null>(null);
-  const [error, setError]       = useState('');
-  const stepTimerRef            = useRef<ReturnType<typeof setInterval> | null>(null);
+  const [url, setUrl]               = useState('');
+  const [urlError, setUrlError]     = useState('');
+  const [loading, setLoading]       = useState(false);
+  const [stepIndex, setStepIndex]   = useState(0);
+  const [tokens, setTokens]         = useState<DesignTokens | null>(null);
+  /** URL captured at the moment of extraction — stable for ThemePreview */
+  const [submittedUrl, setSubmittedUrl] = useState('');
+  const [error, setError]           = useState('');
+  const timerRef                    = useRef<ReturnType<typeof setInterval> | null>(null);
 
   function validateUrl(value: string): boolean {
-    if (!value.trim()) {
-      setUrlError('请输入网站 URL');
-      return false;
-    }
-    if (!isValidUrl(value.trim())) {
-      setUrlError('请输入有效的 http:// 或 https:// 网址');
-      return false;
-    }
+    if (!value.trim())          { setUrlError('请输入网站 URL'); return false; }
+    if (!isValidUrl(value.trim())) { setUrlError('请输入有效的 http:// 或 https:// 网址'); return false; }
     setUrlError('');
     return true;
   }
 
-  function startStepTimer() {
+  function startTimer() {
     let idx = 0;
     setStepIndex(0);
-    stepTimerRef.current = setInterval(() => {
+    timerRef.current = setInterval(() => {
       idx = Math.min(idx + 1, PROGRESS_STEPS.length - 1);
       setStepIndex(idx);
     }, 2200);
   }
 
-  function stopStepTimer() {
-    if (stepTimerRef.current) clearInterval(stepTimerRef.current);
-    stepTimerRef.current = null;
+  function stopTimer() {
+    if (timerRef.current) clearInterval(timerRef.current);
+    timerRef.current = null;
   }
 
   async function handleExtract() {
     if (!validateUrl(url)) return;
 
+    const target = url.trim();
     setLoading(true);
     setTokens(null);
     setError('');
-    startStepTimer();
+    setSubmittedUrl(target);
+    startTimer();
 
     try {
       const res = await fetch('/api/extract', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ url: url.trim() }),
+        body: JSON.stringify({ url: target }),
       });
 
       const reader = res.body?.getReader();
@@ -234,36 +137,35 @@ export default function Home() {
         if (done) break;
 
         buf += decoder.decode(value, { stream: true });
-        const lines = buf.split('\n\n');
-        buf = lines.pop() ?? '';
+        const chunks = buf.split('\n\n');
+        buf = chunks.pop() ?? '';
 
-        for (const line of lines) {
-          const dataLine = line.startsWith('data: ') ? line.slice(6) : line;
-          if (!dataLine.trim()) continue;
+        for (const chunk of chunks) {
+          const data = chunk.startsWith('data: ') ? chunk.slice(6) : chunk;
+          if (!data.trim()) continue;
 
           let event: ExtractEvent;
-          try { event = JSON.parse(dataLine); }
-          catch { continue; }
+          try { event = JSON.parse(data); } catch { continue; }
 
           if (event.step === 'screenshot') setStepIndex(0);
           if (event.step === 'extract')    setStepIndex(2);
 
           if (event.step === 'done' && event.tokens) {
-            stopStepTimer();
+            stopTimer();
             setStepIndex(PROGRESS_STEPS.length - 1);
             setTokens(event.tokens);
           }
           if (event.step === 'error') {
-            stopStepTimer();
+            stopTimer();
             setError(event.message ?? '提取失败，请稍后重试');
           }
         }
       }
     } catch (err) {
-      stopStepTimer();
+      stopTimer();
       setError(err instanceof Error ? err.message : '网络错误，请检查连接');
     } finally {
-      stopStepTimer();
+      stopTimer();
       setLoading(false);
     }
   }
@@ -284,7 +186,7 @@ export default function Home() {
         />
 
         {/* Glow blob */}
-        <div className="pointer-events-none absolute top-0 left-1/2 -translate-x-1/2 h-96 w-96 rounded-full bg-primary/10 blur-3xl" />
+        <div className="pointer-events-none absolute top-0 left-1/2 h-96 w-96 -translate-x-1/2 rounded-full bg-primary/10 blur-3xl" />
 
         {/* Hero */}
         <section className="relative z-10 flex flex-col items-center gap-4 text-center animate-fade-in">
@@ -302,15 +204,15 @@ export default function Home() {
             </span>
           </h1>
 
-          <p className="max-w-md text-base text-muted-foreground leading-relaxed">
+          <p className="max-w-md text-base leading-relaxed text-muted-foreground">
             输入任意网站 URL，AI 自动提取完整的&nbsp;
-            <span className="text-foreground/80 font-medium">Design Token</span>&nbsp;系统——
+            <span className="font-medium text-foreground/80">Design Token</span>&nbsp;系统——
             色彩、字体、间距、圆角，一键输出。
           </p>
         </section>
 
         {/* Input card */}
-        <div className="relative z-10 mt-12 w-full max-w-2xl animate-fade-in [animation-delay:120ms]">
+        <div className="relative z-10 mt-12 w-full max-w-2xl [animation-delay:120ms] animate-fade-in">
           <div className="rounded-2xl border border-border/60 bg-muted/20 p-6 shadow-2xl shadow-black/40 backdrop-blur-sm">
             <label className="mb-2 block text-sm font-medium text-foreground/80">
               网站地址
@@ -322,13 +224,10 @@ export default function Home() {
                   type="url"
                   placeholder="https://stripe.com"
                   value={url}
-                  onChange={(e) => {
-                    setUrl(e.target.value);
-                    if (urlError) validateUrl(e.target.value);
-                  }}
+                  onChange={(e) => { setUrl(e.target.value); if (urlError) validateUrl(e.target.value); }}
                   onKeyDown={(e) => e.key === 'Enter' && !loading && handleExtract()}
                   disabled={loading}
-                  className="h-12 text-base bg-background/60 focus-visible:ring-primary"
+                  className="h-12 bg-background/60 text-base focus-visible:ring-primary"
                 />
                 {urlError && (
                   <p className="flex items-center gap-1 text-xs text-red-400">
@@ -342,18 +241,12 @@ export default function Home() {
                 size="lg"
                 onClick={handleExtract}
                 disabled={loading}
-                className="h-12 min-w-[130px] bg-primary hover:bg-primary/90 font-semibold"
+                className="h-12 min-w-[130px] bg-primary font-semibold hover:bg-primary/90"
               >
                 {loading ? (
-                  <>
-                    <Loader2 className="h-4 w-4 animate-spin" />
-                    提取中…
-                  </>
+                  <><Loader2 className="h-4 w-4 animate-spin" />提取中…</>
                 ) : (
-                  <>
-                    <Sparkles className="h-4 w-4" />
-                    开始提取
-                  </>
+                  <><Sparkles className="h-4 w-4" />开始提取</>
                 )}
               </Button>
             </div>
@@ -364,7 +257,7 @@ export default function Home() {
           </div>
         </div>
 
-        {/* Error state */}
+        {/* Error */}
         {error && !loading && (
           <div className="relative z-10 mt-6 flex w-full max-w-2xl items-start gap-3 rounded-xl border border-red-500/30 bg-red-500/10 p-4 text-sm text-red-400 animate-fade-in">
             <AlertCircle className="mt-0.5 h-4 w-4 flex-shrink-0" />
@@ -376,7 +269,11 @@ export default function Home() {
         )}
 
         {/* Results */}
-        {tokens && !loading && <TokenResults tokens={tokens} />}
+        {tokens && !loading && (
+          <div className="relative z-10 mt-10 w-full max-w-4xl">
+            <ThemePreview tokens={tokens} siteUrl={submittedUrl} />
+          </div>
+        )}
       </main>
     </>
   );
