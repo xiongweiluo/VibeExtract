@@ -5,6 +5,7 @@ import { Loader2, Sparkles, AlertCircle } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { ThemePreview } from '@/components/playground/ThemePreview';
+import { VibeEdit } from '@/components/playground/VibeEdit';
 import type { DesignTokens } from '@/types';
 
 // ── Progress steps ────────────────────────────────────────────────────────
@@ -82,7 +83,9 @@ export default function Home() {
   const [urlError, setUrlError]     = useState('');
   const [loading, setLoading]       = useState(false);
   const [stepIndex, setStepIndex]   = useState(0);
-  const [tokens, setTokens]         = useState<DesignTokens | null>(null);
+  const [tokens, setTokens]               = useState<DesignTokens | null>(null);
+  /** Frozen snapshot from extraction — never mutated by Vibe Edit */
+  const [originalTokens, setOriginalTokens] = useState<DesignTokens | null>(null);
   /** URL captured at the moment of extraction — stable for ThemePreview */
   const [submittedUrl, setSubmittedUrl] = useState('');
   const [error, setError]           = useState('');
@@ -115,6 +118,7 @@ export default function Home() {
     const target = url.trim();
     setLoading(true);
     setTokens(null);
+    setOriginalTokens(null);
     setError('');
     setSubmittedUrl(target);
     startTimer();
@@ -154,6 +158,7 @@ export default function Home() {
             stopTimer();
             setStepIndex(PROGRESS_STEPS.length - 1);
             setTokens(event.tokens);
+            setOriginalTokens(event.tokens);
           }
           if (event.step === 'error') {
             stopTimer();
@@ -270,8 +275,15 @@ export default function Home() {
 
         {/* Results */}
         {tokens && !loading && (
-          <div className="relative z-10 mt-10 w-full max-w-4xl">
+          <div className="relative z-10 mt-10 w-full max-w-4xl space-y-6">
             <ThemePreview tokens={tokens} siteUrl={submittedUrl} />
+            {originalTokens && (
+              <VibeEdit
+                tokens={tokens}
+                originalTokens={originalTokens}
+                onUpdate={setTokens}
+              />
+            )}
           </div>
         )}
       </main>
