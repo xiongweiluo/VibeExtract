@@ -134,6 +134,134 @@ function tok(tokens: DesignTokens) {
 const D: Record<string, number> = { compact: 0.6, comfortable: 1, spacious: 1.45 };
 
 // ─────────────────────────────────────────────────────────────────────────────
+// § 4b  Smooth layered shadows  ★ replaces flat single-layer shadows
+// ─────────────────────────────────────────────────────────────────────────────
+type ShadowDepth = 'flat' | 'subtle' | 'medium' | 'deep' | 'dramatic';
+
+/**
+ * Generates a multi-layer box-shadow string for natural depth.
+ * Each successive layer is larger and more diffuse, mimicking real light physics.
+ * colorHex tints the shadow (useful for dark/branded surfaces).
+ */
+function layeredShadow(depth: ShadowDepth, colorHex = '#000000'): string {
+  const h = colorHex.replace('#', '');
+  const r = parseInt(h.substring(0, 2), 16) || 0;
+  const g = parseInt(h.substring(2, 4), 16) || 0;
+  const b = parseInt(h.substring(4, 6), 16) || 0;
+  const c = (a: number) => `rgba(${r},${g},${b},${a})`;
+  switch (depth) {
+    case 'flat':     return 'none';
+    case 'subtle':   return `0 1px 2px ${c(0.05)}, 0 2px 4px ${c(0.04)}`;
+    case 'medium':   return `0 1px 2px ${c(0.07)}, 0 2px 4px ${c(0.07)}, 0 4px 8px ${c(0.05)}`;
+    case 'deep':     return `0 1px 2px ${c(0.08)}, 0 2px 4px ${c(0.08)}, 0 4px 8px ${c(0.07)}, 0 8px 16px ${c(0.05)}, 0 16px 32px ${c(0.03)}`;
+    case 'dramatic': return `0 1px 2px ${c(0.09)}, 0 4px 8px ${c(0.09)}, 0 8px 24px ${c(0.08)}, 0 16px 48px ${c(0.06)}, 0 32px 64px ${c(0.04)}`;
+  }
+}
+
+/** Derive shadow depth from SiteArchitecture: expressive+spacious → deeper. */
+function archShadowDepth(tokens: DesignTokens, role: 'card' | 'btn' | 'hover' = 'card'): ShadowDepth {
+  const { density, visualWeight: { hierarchy } } = tokens.siteArchitecture;
+  if (hierarchy === 'functional' || density === 'compact') return role === 'btn' ? 'flat' : 'subtle';
+  if (hierarchy === 'expressive') return role === 'hover' ? 'dramatic' : density === 'spacious' ? 'deep' : 'medium';
+  return role === 'btn' ? 'subtle' : 'medium';
+}
+
+/** Shadow tint color: on dark sites, blend brand primary; on light sites, pure black. */
+function shadowTint(tokens: DesignTokens): string {
+  return isDarkSite(tokens) ? tokens.color.brand.primary : '#000000';
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+// § 4c  Paradigm-aware copy  ★ eliminates Lorem Ipsum
+// ─────────────────────────────────────────────────────────────────────────────
+interface ParadigmCopy { primaryCta: string; secondaryCta: string; tagline: string; cardVerb: string }
+
+function paradigmCopy(tokens: DesignTokens): ParadigmCopy {
+  const { paradigm } = tokens.siteArchitecture;
+  // Prefer extracted headline as tagline when it reads like a tagline (short)
+  const extracted = tokens.skeleton.hero.headline;
+  const tagline = extracted && extracted.length < 60 ? extracted : undefined;
+  const map: Record<string, ParadigmCopy> = {
+    'landing':      { primaryCta:'Get started',    secondaryCta:'Learn more',     tagline: tagline ?? 'Built for the next generation.',   cardVerb:'Explore' },
+    'portfolio':    { primaryCta:'View work',       secondaryCta:'Contact me',     tagline: tagline ?? 'Design that speaks for itself.',    cardVerb:'Open' },
+    'e-commerce':   { primaryCta:'Shop now',        secondaryCta:'View all',       tagline: tagline ?? 'Curated for the discerning.',       cardVerb:'Add to bag' },
+    'social-feed':  { primaryCta:'Follow',          secondaryCta:'Explore',        tagline: tagline ?? 'Share your perspective.',           cardVerb:'Like' },
+    'content-site': { primaryCta:'Read more',       secondaryCta:'Subscribe',      tagline: tagline ?? 'Words that move the world.',        cardVerb:'Continue' },
+    'docs':         { primaryCta:'Get started',     secondaryCta:'View examples',  tagline: tagline ?? 'Everything you need to build.',     cardVerb:'Read docs' },
+    'dashboard':    { primaryCta:'Open app',        secondaryCta:'View demo',      tagline: tagline ?? 'Data at a glance.',                 cardVerb:'Details' },
+    'saas-app':     { primaryCta:'Start free trial',secondaryCta:'See pricing',    tagline: tagline ?? 'The platform teams rely on.',       cardVerb:'Open' },
+  };
+  return map[paradigm] ?? map['landing'];
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+// § 4d  Golden-ratio line-height  ★ font rendering quality
+// ─────────────────────────────────────────────────────────────────────────────
+/**
+ * Derives an optically balanced line-height for a given CSS font-size.
+ * Large headings: tight (≈ 1.1). Body copy: golden ratio (1.618). Caption: 1.4.
+ * Formula: clamp(1.1, 1.1 + (16/px) * 0.5, 1.618)
+ */
+function goldenLH(fontSizeCss: string): string {
+  const px = Math.max(parsePx(fontSizeCss), 8);
+  return Math.min(1.618, Math.max(1.1, 1.1 + (16 / px) * 0.5)).toFixed(3);
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+// § 4e  Unsplash keyword images  ★ replaces grey placeholder blocks
+// ─────────────────────────────────────────────────────────────────────────────
+/**
+ * Per-paradigm Unsplash keyword strings.
+ * Grid / masonry sites → landscape · art · nature
+ * Landing / tech sites → technology · workspace · office
+ * source.unsplash.com/?keywords&sig=N  (sig disambiguates image slot)
+ */
+const UNSPLASH_KW: Record<string, string> = {
+  'e-commerce':   'fashion,product,lifestyle',
+  'social-feed':  'photography,nature,art',
+  'portfolio':    'design,art,creative,minimal',
+  'landing':      'technology,workspace,modern',
+  'content-site': 'editorial,minimal,nature',
+  'docs':         'technology,abstract,code',
+  'dashboard':    'city,architecture,abstract',
+  'saas-app':     'technology,office,workspace',
+};
+
+function UnsplashImg({
+  tokens, seed, width, height, style,
+}: {
+  tokens: DesignTokens; seed: number; width: number; height: number; style?: React.CSSProperties;
+}) {
+  const [loaded, setLoaded] = useState(false);
+  const [error,  setError]  = useState(false);
+  const c  = tokens.color;
+  const kw = UNSPLASH_KW[tokens.siteArchitecture.paradigm] ?? 'minimal,modern';
+  // source.unsplash.com is the keyword-redirect API (no auth key needed for demos).
+  // Replace with official Unsplash API + accessKey for production use.
+  const src = `https://source.unsplash.com/${width}x${height}/?${kw}&sig=${seed}`;
+
+  return (
+    <div style={{ position:'relative', width:'100%', height:'100%', overflow:'hidden', ...style }}>
+      {!error && (
+        /* eslint-disable-next-line @next/next/no-img-element */
+        <img src={src} alt="" draggable={false}
+          onLoad={() => setLoaded(true)} onError={() => setError(true)}
+          style={{ position:'absolute', inset:0, width:'100%', height:'100%', objectFit:'cover', opacity: loaded ? 1 : 0, transition:'opacity 0.5s ease' }}
+        />
+      )}
+      {/* Shimmer skeleton while loading */}
+      {!loaded && !error && (
+        <div style={{ position:'absolute', inset:0, background:`linear-gradient(90deg, ${c.background.surface} 0%, ${c.brand.primary}14 50%, ${c.background.surface} 100%)`, backgroundSize:'200% 100%', animation:'shimmer 1.6s ease-in-out infinite' }} />
+      )}
+      {/* Gradient fallback on error */}
+      {error && (
+        <div style={{ position:'absolute', inset:0, background:`linear-gradient(135deg, ${c.brand.primary}25, ${c.brand.secondary}14, ${c.brand.accent}18)`, display:'flex', alignItems:'center', justifyContent:'center', fontSize:14, color:c.brand.primary, opacity:0.45 }}>▣</div>
+      )}
+    </div>
+  );
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
 // § 5  Export utilities  (CSS vars · Tailwind · JSON)
 // ─────────────────────────────────────────────────────────────────────────────
 function buildCSSVars(t: DesignTokens): string {
@@ -282,19 +410,31 @@ function HoverBtn({
   tokens: DesignTokens; style?: React.CSSProperties; children: React.ReactNode; outlined?: boolean;
 }) {
   const [st, setSt] = useState<'idle' | 'hover' | 'press'>('idle');
-  const c = tokens.color;
-  const r = tokens.radius;
+  const c    = tokens.color;
+  const r    = tokens.radius;
+  const tint = shadowTint(tokens);
   const base: React.CSSProperties = outlined
     ? { background: 'transparent', color: c.brand.primary, border: `1.5px solid ${c.brand.primary}`, borderRadius: r.md }
     : { background: c.brand.primary, color: c.text.inverse, border: 'none', borderRadius: r.md };
+  const shadow = st === 'press'
+    ? 'none'
+    : st === 'hover'
+      ? layeredShadow(archShadowDepth(tokens, 'hover'), tint)
+      : layeredShadow(archShadowDepth(tokens, 'btn'), tint);
   return (
     <button
       style={{
         ...base, ...style,
-        boxShadow: st === 'press' ? 'none' : st === 'hover' ? tokens.shadow.md : tokens.shadow.sm,
-        transform: st === 'press' ? 'translateY(0.5px) scale(0.97)' : st === 'hover' ? 'translateY(-1px)' : 'none',
-        transition: 'box-shadow 0.15s ease, transform 0.12s ease, opacity 0.12s',
-        opacity: st === 'press' ? 0.82 : 1, cursor: 'pointer',
+        boxShadow: shadow,
+        transform: st === 'press'
+          ? 'translateY(1px) scale(0.96)'
+          : st === 'hover'
+            ? 'translateY(-2px) scale(1.02)'
+            : 'translateY(0) scale(1)',
+        transition: 'box-shadow 0.18s cubic-bezier(.22,.68,0,1.2), transform 0.15s cubic-bezier(.22,.68,0,1.2), opacity 0.12s',
+        opacity: st === 'press' ? 0.78 : 1,
+        cursor: 'pointer',
+        WebkitFontSmoothing: 'antialiased',
       }}
       onMouseEnter={() => setSt('hover')} onMouseLeave={() => setSt('idle')}
       onMouseDown={() => setSt('press')} onMouseUp={() => setSt('hover')}
@@ -310,14 +450,32 @@ function HoverCard({
   tokens: DesignTokens; style?: React.CSSProperties; children: React.ReactNode; disabled?: boolean;
 }) {
   const [hovered, setHovered] = useState(false);
+  const dark = isDarkSite(tokens);
+  const tint = shadowTint(tokens);
+  const idleDepth  = archShadowDepth(tokens, 'card');
+  const hoverDepth = archShadowDepth(tokens, 'hover');
+
   return (
     <div
       style={{
         ...style,
-        boxShadow: hovered && !disabled ? tokens.shadow.lg : style?.boxShadow ?? tokens.shadow.sm,
-        transform: hovered && !disabled ? 'translateY(-2px)' : 'none',
-        transition: 'box-shadow 0.2s ease, transform 0.18s ease',
+        boxShadow: hovered && !disabled
+          ? layeredShadow(hoverDepth, tint)
+          : layeredShadow(idleDepth, tint),
+        transform: hovered && !disabled
+          ? 'translateY(-3px) scale(1.012)'
+          : 'translateY(0) scale(1)',
+        // Frosted glass on dark sites when hovered
+        backdropFilter: hovered && !disabled && dark ? 'blur(6px) saturate(140%)' : 'none',
+        WebkitBackdropFilter: hovered && !disabled && dark ? 'blur(6px) saturate(140%)' : 'none',
+        transition: [
+          'box-shadow 0.22s cubic-bezier(.22,.68,0,1.1)',
+          'transform 0.2s cubic-bezier(.22,.68,0,1.1)',
+          'backdrop-filter 0.2s ease',
+          '-webkit-backdrop-filter 0.2s ease',
+        ].join(', '),
         cursor: disabled ? 'default' : 'pointer',
+        willChange: 'transform, box-shadow',
       }}
       onMouseEnter={() => setHovered(true)} onMouseLeave={() => setHovered(false)}
     >
@@ -452,13 +610,9 @@ function VisualAccent({ tokens, width, height }: { tokens: DesignTokens; width: 
   if (dom === 'imagery') {
     return (
       <div style={{ width, height, borderRadius: r.lg, overflow:'hidden', border:`1px solid ${c.border}`, position:'relative', flexShrink:0 }}>
-        <div style={{ position:'absolute', inset:0, background:`linear-gradient(135deg, ${c.brand.primary}30, ${c.brand.secondary}18, ${c.brand.accent}22)` }} />
-        <div style={{ position:'absolute', inset:0, display:'flex', flexDirection:'column', gap:4, padding:6 }}>
-          {[1,2,3].map(i => (
-            <div key={i} style={{ flex:1, borderRadius: r.sm, background:`${c.brand.primary}${i * 8 + 10}` }} />
-          ))}
-        </div>
-        <div style={{ position:'absolute', inset:0, display:'flex', alignItems:'center', justifyContent:'center', fontSize:16, color:c.brand.primary, opacity:0.35 }}>▣</div>
+        <UnsplashImg tokens={tokens} seed={7} width={320} height={240} />
+        {/* Subtle brand tint overlay */}
+        <div style={{ position:'absolute', inset:0, background:`linear-gradient(180deg, transparent 55%, ${c.background.page}cc)`, pointerEvents:'none' }} />
       </div>
     );
   }
@@ -514,7 +668,8 @@ function HeroSection({ tokens, scale, gap }: { tokens: DesignTokens; scale: numb
   const exp = tokens.siteArchitecture.visualWeight.hierarchy === 'expressive';
   const dom = tokens.siteArchitecture.visualWeight.dominant;
 
-  const headline  = sk.headline || 'Welcome';
+  const copy     = paradigmCopy(tokens);
+  const headline  = sk.headline || copy.tagline;
   const ctaCount  = Math.max(sk.ctaCount, 1);
   const layout    = sk.layout;
 
@@ -525,14 +680,19 @@ function HeroSection({ tokens, scale, gap }: { tokens: DesignTokens; scale: numb
   const padV             = Math.round(8 * gap);
   const padH             = 14;
 
+  // Apply golden-ratio line-height to body font size
+  const bodyLH = goldenLH(t.fs('sm'));
+
+  const smoothText: React.CSSProperties = { WebkitFontSmoothing:'antialiased' };
+
   const ctas = (
     <div style={{ display:'flex', gap: Math.round(5 * gap), flexWrap:'wrap' }}>
-      <HoverBtn tokens={tokens} style={{ padding:`${Math.round(5*gap)}px ${Math.round(10*gap)}px`, fontFamily: ty.families.body, fontWeight: ty.weights.bold, fontSize: ctaFontSize, borderRadius: r.md }}>
-        {ctaCount >= 1 ? (tokens.skeleton.nav.items[0] ? 'Get started' : 'Get started') : ''}
+      <HoverBtn tokens={tokens} style={{ padding:`${Math.round(5*gap)}px ${Math.round(10*gap)}px`, fontFamily: ty.families.body, fontWeight: ty.weights.bold, fontSize: ctaFontSize, borderRadius: r.md, ...smoothText }}>
+        {copy.primaryCta}
       </HoverBtn>
       {ctaCount >= 2 && (
-        <HoverBtn tokens={tokens} outlined style={{ padding:`${Math.round(5*gap)}px ${Math.round(10*gap)}px`, fontFamily: ty.families.body, fontWeight: ty.weights.medium, fontSize: ctaFontSize, borderRadius: r.md }}>
-          Learn more
+        <HoverBtn tokens={tokens} outlined style={{ padding:`${Math.round(5*gap)}px ${Math.round(10*gap)}px`, fontFamily: ty.families.body, fontWeight: ty.weights.medium, fontSize: ctaFontSize, borderRadius: r.md, ...smoothText }}>
+          {copy.secondaryCta}
         </HoverBtn>
       )}
     </div>
@@ -546,8 +706,8 @@ function HeroSection({ tokens, scale, gap }: { tokens: DesignTokens; scale: numb
     return (
       <div style={{ flex:1, display:'flex', flexDirection:'column', alignItems:'center', justifyContent:'center', background: heroBg, padding:`${padV}px ${padH}px`, textAlign:'center', gap:`${gapPx}px` }}>
         {dom === 'typography' && <span style={{ fontSize:7, fontFamily:monoFont, color:`${c.text.inverse}80`, letterSpacing:'0.15em', textTransform:'uppercase' }}>— NEW —</span>}
-        <h1 style={{ margin:0, fontFamily: ty.families.heading, fontWeight: ty.weights.bold, fontSize: headlineFontSize, lineHeight: t.lh('4xl'), color: c.text.inverse }}>{headline}</h1>
-        <p style={{ margin:0, fontSize: bodyFontSize, color:`${c.text.inverse}aa`, maxWidth:220 }}>Extracted straight from the source.</p>
+        <h1 style={{ margin:0, fontFamily: ty.families.heading, fontWeight: ty.weights.bold, fontSize: headlineFontSize, lineHeight: t.lh('4xl'), color: c.text.inverse, ...smoothText }}>{headline}</h1>
+        <p style={{ margin:0, fontSize: bodyFontSize, color:`${c.text.inverse}aa`, maxWidth:220, lineHeight: bodyLH }}>{copy.tagline}</p>
         {ctas}
       </div>
     );
@@ -561,10 +721,12 @@ function HeroSection({ tokens, scale, gap }: { tokens: DesignTokens; scale: numb
     return (
       <div style={{ flex:1, display:'flex', flexDirection:'column', alignItems:'center', justifyContent:'center', textAlign:'center', background: pageBg, padding:`${padV}px 20px`, gap:`${gapPx}px` }}>
         {dom === 'imagery' && (
-          <div style={{ width:60, height:36, borderRadius: r.lg, background:`linear-gradient(135deg, ${c.brand.primary}22, ${c.brand.accent}16)`, border:`1px solid ${c.border}`, marginBottom:2 }} />
+          <div style={{ width:72, height:42, borderRadius: r.lg, overflow:'hidden', border:`1px solid ${c.border}`, marginBottom:2 }}>
+            <UnsplashImg tokens={tokens} seed={42} width={144} height={84} />
+          </div>
         )}
-        <h1 style={{ margin:0, fontFamily: ty.families.heading, fontWeight: ty.weights.bold, fontSize: headlineFontSize, lineHeight: t.lh('4xl'), color: c.text.primary }}>{headline}</h1>
-        <p style={{ margin:0, fontSize: bodyFontSize, color: c.text.secondary, maxWidth:240 }}>Zero guesswork. Extracted design DNA.</p>
+        <h1 style={{ margin:0, fontFamily: ty.families.heading, fontWeight: ty.weights.bold, fontSize: headlineFontSize, lineHeight: t.lh('4xl'), color: c.text.primary, ...smoothText }}>{headline}</h1>
+        <p style={{ margin:0, fontSize: bodyFontSize, color: c.text.secondary, maxWidth:240, lineHeight: bodyLH }}>{copy.tagline}</p>
         {ctas}
       </div>
     );
@@ -575,8 +737,8 @@ function HeroSection({ tokens, scale, gap }: { tokens: DesignTokens; scale: numb
     return (
       <div style={{ flex:1, display:'flex', overflow:'hidden', background: c.background.page }}>
         <div style={{ flex:2, display:'flex', flexDirection:'column', justifyContent:'center', padding:`${padV}px ${padH}px`, gap:`${Math.round(6*gap)}px` }}>
-          <h1 style={{ margin:0, fontFamily: ty.families.heading, fontWeight: ty.weights.bold, fontSize: headlineFontSize, lineHeight: t.lh('4xl'), color: c.text.primary }}>{headline}</h1>
-          <p style={{ margin:0, fontSize: bodyFontSize, color: c.text.secondary }}>Design token extraction, precision-first.</p>
+          <h1 style={{ margin:0, fontFamily: ty.families.heading, fontWeight: ty.weights.bold, fontSize: headlineFontSize, lineHeight: t.lh('4xl'), color: c.text.primary, ...smoothText }}>{headline}</h1>
+          <p style={{ margin:0, fontSize: bodyFontSize, color: c.text.secondary, lineHeight: bodyLH }}>{copy.tagline}</p>
           {ctas}
         </div>
         <div style={{ flex:1, display:'flex', alignItems:'center', justifyContent:'center', padding:'8px 10px 8px 0' }}>
@@ -590,8 +752,8 @@ function HeroSection({ tokens, scale, gap }: { tokens: DesignTokens; scale: numb
   return (
     <div style={{ flex:1, display:'flex', overflow:'hidden', background: c.background.page }}>
       <div style={{ flex:1, display:'flex', flexDirection:'column', justifyContent:'center', padding:`${padV}px ${padH}px`, gap:`${Math.round(5*gap)}px` }}>
-        <h1 style={{ margin:0, fontFamily: ty.families.heading, fontWeight: ty.weights.bold, fontSize: headlineFontSize, lineHeight: t.lh('4xl'), color: c.text.primary }}>{headline}</h1>
-        <p style={{ margin:0, fontSize: bodyFontSize, color: c.text.secondary, lineHeight: t.lh('sm') }}>AI-extracted design tokens, ready for production.</p>
+        <h1 style={{ margin:0, fontFamily: ty.families.heading, fontWeight: ty.weights.bold, fontSize: headlineFontSize, lineHeight: t.lh('4xl'), color: c.text.primary, ...smoothText }}>{headline}</h1>
+        <p style={{ margin:0, fontSize: bodyFontSize, color: c.text.secondary, lineHeight: bodyLH }}>{copy.tagline}</p>
         {ctas}
       </div>
       <div style={{ width:82, margin:'8px 8px 8px 0', display:'flex', alignItems:'center', justifyContent:'center' }}>
@@ -764,13 +926,15 @@ function GridLayout({ tokens, scale }: { tokens: DesignTokens; scale: number }) 
                 const bg  = accentColors[idx % 3];
                 return (
                   <HoverCard key={row} tokens={tokens} disabled={!sk.cards.hasShadow}
-                    style={{ background: c.background.surface, borderRadius: r.md, overflow:'hidden', boxShadow: sk.cards.hasShadow ? tokens.shadow.md : 'none', border: sk.cards.hasShadow ? 'none' : `1px solid ${c.border}` }}>
-                    <div style={{ height: h, background: bg, opacity: 0.22 + (row % 3) * 0.1 }} />
+                    style={{ background: c.background.surface, borderRadius: r.md, overflow:'hidden', border: sk.cards.hasShadow ? 'none' : `1px solid ${c.border}` }}>
+                    <div style={{ height: h, position:'relative', overflow:'hidden' }}>
+                      <UnsplashImg tokens={tokens} seed={idx + 1} width={200} height={h * 2} />
+                    </div>
                     <div style={{ padding:'4px 6px' }}>
-                      <p style={{ margin:0, fontSize: mockSize(t.fs('xs'), scale), fontWeight: ty.weights.semibold, color: c.text.primary, overflow:'hidden', whiteSpace:'nowrap', textOverflow:'ellipsis' }}>
+                      <p style={{ margin:0, fontSize: mockSize(t.fs('xs'), scale), fontWeight: ty.weights.semibold, color: c.text.primary, overflow:'hidden', whiteSpace:'nowrap', textOverflow:'ellipsis', WebkitFontSmoothing:'antialiased' }}>
                         {cardNames[idx % cardNames.length]}
                       </p>
-                      <p style={{ margin:'1px 0 0', fontSize: mockSize(t.fs('xs'), scale * 0.8), color: c.text.secondary }}>
+                      <p style={{ margin:'1px 0 0', fontSize: mockSize(t.fs('xs'), scale * 0.8), color: c.text.secondary, lineHeight: goldenLH(t.fs('xs')) }}>
                         {cardSubs[idx % cardSubs.length]}
                       </p>
                     </div>
@@ -797,13 +961,15 @@ function GridLayout({ tokens, scale }: { tokens: DesignTokens; scale: number }) 
           const bg = accentColors[i % 3];
           return (
             <HoverCard key={i} tokens={tokens} disabled={!sk.cards.hasShadow}
-              style={{ background: c.background.surface, borderRadius: r.md, overflow:'hidden', boxShadow: sk.cards.hasShadow ? tokens.shadow.md : 'none', border: sk.cards.hasShadow ? 'none' : `1px solid ${c.border}` }}>
-              <div style={{ height: h, background: bg, opacity: 0.28 + (i % 3) * 0.12 }} />
+              style={{ background: c.background.surface, borderRadius: r.md, overflow:'hidden', border: sk.cards.hasShadow ? 'none' : `1px solid ${c.border}` }}>
+              <div style={{ height: h, position:'relative', overflow:'hidden' }}>
+                <UnsplashImg tokens={tokens} seed={i + 20} width={200} height={h * 2} />
+              </div>
               <div style={{ padding:'4px 6px' }}>
-                <p style={{ margin:0, fontSize: mockSize(t.fs('xs'), scale), fontWeight: ty.weights.semibold, color: c.text.primary, overflow:'hidden', whiteSpace:'nowrap', textOverflow:'ellipsis' }}>
+                <p style={{ margin:0, fontSize: mockSize(t.fs('xs'), scale), fontWeight: ty.weights.semibold, color: c.text.primary, overflow:'hidden', whiteSpace:'nowrap', textOverflow:'ellipsis', WebkitFontSmoothing:'antialiased' }}>
                   {cardNames[i % cardNames.length]}
                 </p>
-                <p style={{ margin:'1px 0 0', fontSize: mockSize(t.fs('xs'), scale * 0.8), color: c.text.secondary }}>
+                <p style={{ margin:'1px 0 0', fontSize: mockSize(t.fs('xs'), scale * 0.8), color: c.text.secondary, lineHeight: goldenLH(t.fs('xs')) }}>
                   {cardSubs[i % cardSubs.length]}
                 </p>
               </div>
@@ -966,19 +1132,28 @@ function MockPage({ tokens }: { tokens: DesignTokens }) {
   const t = tok(tokens);
   const heroPx = parsePx(t.fs('4xl'));
   const scale  = Math.min(50 / Math.max(heroPx, 32), 0.55);
-
   const { paradigm, layout } = tokens.siteArchitecture;
 
+  // Font-rendering wrapper: antialiasing + subpixel rendering applied at the root
+  const fontRenderStyle: React.CSSProperties = {
+    height: '100%',
+    WebkitFontSmoothing: 'antialiased',
+    MozOsxFontSmoothing: 'grayscale',
+    textRendering: 'optimizeLegibility',
+  };
+
+  let layout_: React.ReactNode;
   if (paradigm === 'dashboard' || paradigm === 'saas-app' || layout.type === 'sidebar') {
-    return <DashboardLayout tokens={tokens} scale={scale} />;
+    layout_ = <DashboardLayout tokens={tokens} scale={scale} />;
+  } else if (paradigm === 'e-commerce' || paradigm === 'social-feed' || layout.type === 'grid' || layout.type === 'masonry') {
+    layout_ = <GridLayout tokens={tokens} scale={scale} />;
+  } else if (paradigm === 'content-site' || paradigm === 'docs') {
+    layout_ = <EditorialLayout tokens={tokens} scale={scale} />;
+  } else {
+    layout_ = <LandingLayout tokens={tokens} scale={scale} />;
   }
-  if (paradigm === 'e-commerce' || paradigm === 'social-feed' || layout.type === 'grid' || layout.type === 'masonry') {
-    return <GridLayout tokens={tokens} scale={scale} />;
-  }
-  if (paradigm === 'content-site' || paradigm === 'docs') {
-    return <EditorialLayout tokens={tokens} scale={scale} />;
-  }
-  return <LandingLayout tokens={tokens} scale={scale} />;
+
+  return <div style={fontRenderStyle}>{layout_}</div>;
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
@@ -1493,7 +1668,10 @@ export function ThemePreview({ tokens, siteUrl }: ThemePreviewProps) {
       )}
 
       <style>{`
-        @keyframes spin { to { transform: rotate(360deg); } }
+        @keyframes spin    { to { transform: rotate(360deg); } }
+        @keyframes shimmer { 0%,100% { background-position: 200% center; } 50% { background-position: 0% center; } }
+        @keyframes fade-up { from { opacity:0; transform:translateY(8px); } to { opacity:1; transform:none; } }
+        @keyframes pulse-dot { 0%,100% { opacity:1; } 50% { opacity:0.4; } }
       `}</style>
     </div>
   );
