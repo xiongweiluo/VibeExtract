@@ -63,7 +63,7 @@ function ColorSwatch({ label, value }: { label: string; value: string }) {
 
 // ── Export utilities ──────────────────────────────────────────────────────
 function buildCSSVars(t: DesignTokens): string {
-  return [
+  const lines = [
     ':root {',
     `  --color-primary:   ${t.colors.brand.primary};`,
     `  --color-secondary: ${t.colors.brand.secondary};`,
@@ -72,26 +72,63 @@ function buildCSSVars(t: DesignTokens): string {
     `  --color-text:      ${t.colors.text.base};`,
     `  --color-muted:     ${t.colors.text.muted};`,
     `  --color-border:    ${t.colors.border};`,
-    `  --spacing-base:    ${t.spacing.base}${t.spacing.scale};`,
     `  --radius-sm:       ${t.borderRadius.small};`,
     `  --radius-md:       ${t.borderRadius.medium};`,
     `  --radius-lg:       ${t.borderRadius.large};`,
     `  --font-sans:       ${t.typography.sans};`,
     `  --heading-weight:  ${t.typography.headingWeight};`,
-    '}',
-  ].join('\n');
+  ];
+
+  // Physical spacing — precise named tokens
+  if (t.spacingSystem) {
+    lines.push('');
+    lines.push('  /* ── Spacing (physical) ─── */');
+    for (const [name, val] of Object.entries(t.spacingSystem.named)) {
+      lines.push(`  --space-${name}: ${val};`);
+    }
+  } else {
+    lines.push(`  --spacing-base: ${t.spacing.base}${t.spacing.scale};`);
+  }
+
+  // Physical typography — named font-size tokens
+  if (t.typographyScale) {
+    lines.push('');
+    lines.push('  /* ── Typography (physical) ─── */');
+    lines.push(`  --font-size-base: ${t.typographyScale.baseSize};`);
+    for (const step of t.typographyScale.steps) {
+      lines.push(`  --font-size-${step.role}: ${step.px};`);
+      lines.push(`  --line-height-${step.role}: ${step.lineHeight};`);
+    }
+  }
+
+  lines.push('}');
+  return lines.join('\n');
 }
 
 function buildTailwind(t: DesignTokens): string {
-  return JSON.stringify({
-    theme: {
-      extend: {
-        colors: { primary: t.colors.brand.primary, secondary: t.colors.brand.secondary, background: t.colors.background.main, card: t.colors.background.card, muted: t.colors.text.muted, border: t.colors.border },
-        borderRadius: { sm: t.borderRadius.small, md: t.borderRadius.medium, lg: t.borderRadius.large },
-        fontFamily: { sans: [t.typography.sans] },
-      },
+  const ext: Record<string, unknown> = {
+    colors: {
+      primary: t.colors.brand.primary, secondary: t.colors.brand.secondary,
+      background: t.colors.background.main, card: t.colors.background.card,
+      muted: t.colors.text.muted, border: t.colors.border,
     },
-  }, null, 2);
+    borderRadius: { sm: t.borderRadius.small, md: t.borderRadius.medium, lg: t.borderRadius.large },
+    fontFamily: { sans: [t.typography.sans] },
+  };
+
+  if (t.spacingSystem) {
+    ext.spacing = Object.fromEntries(
+      Object.entries(t.spacingSystem.named).map(([k, v]) => [k, v])
+    );
+  }
+
+  if (t.typographyScale) {
+    ext.fontSize = Object.fromEntries(
+      t.typographyScale.steps.map(s => [s.role, [s.px, { lineHeight: s.lineHeight }]])
+    );
+  }
+
+  return JSON.stringify({ theme: { extend: ext } }, null, 2);
 }
 
 function downloadJSON(t: DesignTokens, siteUrl: string): void {
@@ -394,19 +431,65 @@ function BentoGrid({ tokens, siteUrl }: { tokens: DesignTokens; siteUrl?: string
       {/* ── Cell 2: Typography (5 cols) ── */}
       <div className="vi-cell-typo vi-glow-card">
         <div className="vi-glow-card-inner" style={{ padding:'20px 22px', display:'flex', flexDirection:'column' }}>
-          <p style={cellLabelStyle}>Typography</p>
-          <div style={{ flex:1, display:'flex', flexDirection:'column', gap:10 }}>
-            <div style={{ fontFamily: syneFont, fontSize:28, fontWeight:700, lineHeight:1.1, letterSpacing:'-0.02em', color:'rgba(255,255,255,.95)' }}>
-              The new<br/>standard.
-            </div>
-            <p style={{ fontSize:13, color:'rgba(255,255,255,.42)', lineHeight:1.65, fontWeight:300 }}>
-              Sans-serif stack optimised for high-DPI screens.
-            </p>
-            <div style={{ display:'flex', gap:6, flexWrap:'wrap', marginTop:'auto', paddingTop:8 }}>
-              <span style={{ padding:'3px 9px', border:'1px solid rgba(124,109,240,.3)', borderRadius:6, fontSize:10, fontFamily:monoFont, color:'#a78bfa' }}>{t.sans.split(',')[0].trim()}</span>
-              <span style={{ padding:'3px 9px', border:'1px solid rgba(255,255,255,.065)', borderRadius:6, fontSize:10, fontFamily:monoFont, color:'rgba(255,255,255,.35)' }}>wt: {t.headingWeight}</span>
-            </div>
+          <div style={{ display:'flex', alignItems:'center', justifyContent:'space-between', marginBottom:14 }}>
+            <p style={{ ...cellLabelStyle, marginBottom:0 }}>Typography</p>
+            {tokens.typographyScale && (
+              <span style={{ fontSize:9, fontFamily:monoFont, color:'#34d399', padding:'1px 6px', borderRadius:4, border:'1px solid rgba(52,211,153,.25)', background:'rgba(52,211,153,.06)' }}>
+                ⬡ physical
+              </span>
+            )}
           </div>
+
+          {tokens.typographyScale ? (
+            /* ── Physical type scale specimen ─────────────────────────── */
+            <div style={{ flex:1, display:'flex', flexDirection:'column', gap:0, overflowY:'auto' }}>
+              {[...tokens.typographyScale.steps].reverse().map(step => {
+                const rawPx = parseInt(step.px);
+                // Cap display size so every row fits the cell
+                const displayPx = Math.min(rawPx, 26);
+                return (
+                  <div key={step.px} style={{ display:'flex', alignItems:'center', gap:8, padding:'4px 0', borderBottom:'1px solid rgba(255,255,255,.045)' }}>
+                    <span style={{ fontFamily: t.sans, fontSize: displayPx, fontWeight: step.weight, lineHeight: step.lineHeight, color:'rgba(255,255,255,.88)', minWidth:32, flexShrink:0 }}>
+                      Aa
+                    </span>
+                    <div style={{ display:'flex', gap:4, marginLeft:'auto', alignItems:'center', flexShrink:0 }}>
+                      <span style={{ fontSize:9, fontFamily:monoFont, color:'#a78bfa', padding:'1px 5px', borderRadius:4, border:'1px solid rgba(167,139,250,.2)', background:'rgba(167,139,250,.05)', whiteSpace:'nowrap' }}>
+                        {step.role}
+                      </span>
+                      <span style={{ fontSize:9, fontFamily:monoFont, color:'rgba(255,255,255,.35)', whiteSpace:'nowrap' }}>
+                        {step.rem}
+                      </span>
+                      <span style={{ fontSize:9, fontFamily:monoFont, color:'rgba(255,255,255,.18)', whiteSpace:'nowrap' }}>
+                        /{step.weight}
+                      </span>
+                    </div>
+                  </div>
+                );
+              })}
+              {/* Font families */}
+              {tokens.typographyScale.families.length > 0 && (
+                <div style={{ display:'flex', gap:5, flexWrap:'wrap', paddingTop:8 }}>
+                  {tokens.typographyScale.families.map(f => (
+                    <span key={f} style={{ padding:'2px 7px', border:'1px solid rgba(124,109,240,.3)', borderRadius:5, fontSize:10, fontFamily:monoFont, color:'#a78bfa' }}>{f}</span>
+                  ))}
+                </div>
+              )}
+            </div>
+          ) : (
+            /* ── Fallback: decorative display ─────────────────────────── */
+            <div style={{ flex:1, display:'flex', flexDirection:'column', gap:10 }}>
+              <div style={{ fontFamily: syneFont, fontSize:28, fontWeight:700, lineHeight:1.1, letterSpacing:'-0.02em', color:'rgba(255,255,255,.95)' }}>
+                The new<br/>standard.
+              </div>
+              <p style={{ fontSize:13, color:'rgba(255,255,255,.42)', lineHeight:1.65, fontWeight:300 }}>
+                Sans-serif stack optimised for high-DPI screens.
+              </p>
+              <div style={{ display:'flex', gap:6, flexWrap:'wrap', marginTop:'auto', paddingTop:8 }}>
+                <span style={{ padding:'3px 9px', border:'1px solid rgba(124,109,240,.3)', borderRadius:6, fontSize:10, fontFamily:monoFont, color:'#a78bfa' }}>{t.sans.split(',')[0].trim()}</span>
+                <span style={{ padding:'3px 9px', border:'1px solid rgba(255,255,255,.065)', borderRadius:6, fontSize:10, fontFamily:monoFont, color:'rgba(255,255,255,.35)' }}>wt: {t.headingWeight}</span>
+              </div>
+            </div>
+          )}
         </div>
       </div>
 
@@ -428,15 +511,55 @@ function BentoGrid({ tokens, siteUrl }: { tokens: DesignTokens; siteUrl?: string
       {/* ── Cell 4: Spacing Scale (4 cols) ── */}
       <div className="vi-cell-spacing vi-glow-card">
         <div className="vi-glow-card-inner" style={{ padding:'20px 22px' }}>
-          <p style={cellLabelStyle}>Spacing Scale</p>
-          <div style={{ display:'flex', flexDirection:'column', gap:8 }}>
-            {[1, 2, 4, 8].map(mult => (
-              <div key={mult} style={{ display:'flex', alignItems:'center', gap:10 }}>
-                <div style={{ height:5, borderRadius:3, background:'linear-gradient(90deg, #7c6df0, #a78bfa)', opacity:0.7, width: `${mult * 16}px`, minWidth:16, maxWidth:128, flexShrink:0 }} />
-                <span style={{ fontSize:10, fontFamily:monoFont, color:'rgba(255,255,255,.35)', whiteSpace:'nowrap' }}>{spacing.base * mult}{spacing.scale} · {mult}×</span>
-              </div>
-            ))}
+          <div style={{ display:'flex', alignItems:'center', justifyContent:'space-between', marginBottom:14 }}>
+            <p style={{ ...cellLabelStyle, marginBottom:0 }}>Spacing Scale</p>
+            {tokens.spacingSystem && (
+              <span style={{ fontSize:9, fontFamily:monoFont, color:'#34d399', padding:'1px 6px', borderRadius:4, border:'1px solid rgba(52,211,153,.25)', background:'rgba(52,211,153,.06)' }}>
+                ⬡ physical
+              </span>
+            )}
           </div>
+
+          {tokens.spacingSystem ? (
+            /* ── Physical step scale ──────────────────────────────────── */
+            (() => {
+              const sys = tokens.spacingSystem!;
+              // Reverse-map: "8px" → "sm"
+              const nameMap: Record<string, string> = {};
+              for (const [k, v] of Object.entries(sys.named)) nameMap[v] = k;
+              const maxPx = Math.max(...sys.steps.map(s => parseInt(s)), 1);
+              return (
+                <div style={{ display:'flex', flexDirection:'column', gap:5 }}>
+                  <div style={{ fontSize:9, fontFamily:monoFont, color:'rgba(52,211,153,.7)', marginBottom:4 }}>
+                    base {sys.baseUnit}px grid · {sys.steps.length} steps
+                  </div>
+                  {sys.steps.map(step => {
+                    const px  = parseInt(step);
+                    const w   = Math.max(Math.round((px / maxPx) * 112), 4);
+                    const name = nameMap[step];
+                    return (
+                      <div key={step} style={{ display:'flex', alignItems:'center', gap:8 }}>
+                        <div style={{ height:4, borderRadius:2, background:'linear-gradient(90deg, #34d399, #6ee7b7)', opacity:0.75, width:`${w}px`, flexShrink:0 }} />
+                        <span style={{ fontSize:9.5, fontFamily:monoFont, color:'rgba(255,255,255,.4)', whiteSpace:'nowrap' }}>
+                          {step}{name ? ` · ${name}` : ''}
+                        </span>
+                      </div>
+                    );
+                  })}
+                </div>
+              );
+            })()
+          ) : (
+            /* ── Fallback: computed multiplier bars ───────────────────── */
+            <div style={{ display:'flex', flexDirection:'column', gap:8 }}>
+              {[1, 2, 4, 8].map(mult => (
+                <div key={mult} style={{ display:'flex', alignItems:'center', gap:10 }}>
+                  <div style={{ height:5, borderRadius:3, background:'linear-gradient(90deg, #7c6df0, #a78bfa)', opacity:0.7, width:`${mult * 16}px`, minWidth:16, maxWidth:128, flexShrink:0 }} />
+                  <span style={{ fontSize:10, fontFamily:monoFont, color:'rgba(255,255,255,.35)', whiteSpace:'nowrap' }}>{spacing.base * mult}{spacing.scale} · {mult}×</span>
+                </div>
+              ))}
+            </div>
+          )}
         </div>
       </div>
 
@@ -453,6 +576,14 @@ function BentoGrid({ tokens, siteUrl }: { tokens: DesignTokens; siteUrl?: string
               ['typeScale.hero',           tokens.typeScale.hero],
               ['layout.pattern',           tokens.layoutStructure.pattern],
               ['layout.density',           tokens.layoutStructure.density],
+              ...(tokens.spacingSystem ? [
+                ['spacing.baseUnit',       `${tokens.spacingSystem.baseUnit}px`],
+                ['spacing.steps',          `${tokens.spacingSystem.steps.length} steps`],
+              ] : []),
+              ...(tokens.typographyScale ? [
+                ['typo.baseSize',          tokens.typographyScale.baseSize],
+                ['typo.families',          tokens.typographyScale.families.join(', ') || '—'],
+              ] : []),
             ].map(([key, val]) => (
               <div key={key} style={{ display:'flex', justifyContent:'space-between', alignItems:'center', padding:'6px 0', borderBottom:'1px solid rgba(255,255,255,.065)' }}>
                 <span style={{ fontSize:10.5, fontFamily:monoFont, color:'rgba(255,255,255,.35)' }}>{key}</span>
@@ -469,9 +600,9 @@ function BentoGrid({ tokens, siteUrl }: { tokens: DesignTokens; siteUrl?: string
           {/* Header row */}
           <div style={{ display:'flex', alignItems:'center', justifyContent:'space-between', marginBottom:12 }}>
             <p style={{ ...cellLabelStyle, marginBottom:0 }}>Component Preview</p>
-            <div style={{ display:'inline-flex', alignItems:'center', gap:5, padding:'3px 10px', borderRadius:100, background:'rgba(56,189,248,.1)', border:'1px solid rgba(56,189,248,.2)', fontSize:10, fontFamily:monoFont, color:'#7dd3fc' }}>
-              <span style={{ width:5, height:5, borderRadius:'50%', background:'#38bdf8', animation:'pulse-dot 2s infinite' }} />
-              AI Extracted
+            <div style={{ display:'inline-flex', alignItems:'center', gap:5, padding:'3px 10px', borderRadius:100, background: tokens.spacingSystem ? 'rgba(52,211,153,.08)' : 'rgba(56,189,248,.1)', border:`1px solid ${tokens.spacingSystem ? 'rgba(52,211,153,.25)' : 'rgba(56,189,248,.2)'}`, fontSize:10, fontFamily:monoFont, color: tokens.spacingSystem ? '#34d399' : '#7dd3fc' }}>
+              <span style={{ width:5, height:5, borderRadius:'50%', background: tokens.spacingSystem ? '#34d399' : '#38bdf8', animation:'pulse-dot 2s infinite' }} />
+              {tokens.spacingSystem ? 'AI + Physical' : 'AI Extracted'}
             </div>
           </div>
 

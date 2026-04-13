@@ -56,4 +56,24 @@ export const MOCK_DESIGN_TOKENS: DesignTokens = {
       letterSpacing: 'normal',
     },
   },
+  spacingSystem: {
+    baseUnit: 4,
+    steps: ['4px','8px','12px','16px','20px','24px','32px','40px','48px','64px'],
+    named: { xs:'4px', sm:'8px', md:'16px', lg:'24px', xl:'32px', '2xl':'48px', '3xl':'64px' },
+  },
+  typographyScale: {
+    baseSize: '16px',
+    baseSizeRem: '1rem',
+    families: ['Inter', 'system-ui'],
+    steps: [
+      { px:'12px', rem:'0.75rem',  lineHeight:'1.5', weight:'400', role:'label'   },
+      { px:'14px', rem:'0.875rem', lineHeight:'1.5', weight:'400', role:'body-sm' },
+      { px:'16px', rem:'1rem',     lineHeight:'1.6', weight:'400', role:'body'    },
+      { px:'20px', rem:'1.25rem',  lineHeight:'1.4', weight:'500', role:'body-lg' },
+      { px:'24px', rem:'1.5rem',   lineHeight:'1.3', weight:'600', role:'h4'      },
+      { px:'32px', rem:'2rem',     lineHeight:'1.2', weight:'700', role:'h3'      },
+      { px:'48px', rem:'3rem',     lineHeight:'1.1', weight:'700', role:'h2'      },
+      { px:'56px', rem:'3.5rem',   lineHeight:'1.05',weight:'800', role:'h1'      },
+    ],
+  },
 };

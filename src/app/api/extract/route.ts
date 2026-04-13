@@ -1,6 +1,7 @@
 import { NextRequest } from 'next/server';
 import axios, { AxiosError } from 'axios';
 import { extractDesignSystem, ExtractionError } from '../../../services/extractor';
+import { extractPhysicalTokens } from '../../../services/cssExtractor';
 import type { DesignTokens } from '../../../types';
 
 export const runtime = 'nodejs'; // Buffer + axios — not compatible with Edge runtime
@@ -11,8 +12,9 @@ export const runtime = 'nodejs'; // Buffer + axios — not compatible with Edge 
 
 type ExtractEvent =
   | { step: 'screenshot'; message: string }
+  | { step: 'physical';   message: string }
   | { step: 'extract';    message: string }
-  | { step: 'done';       tokens: DesignTokens }
+  | { step: 'done';       tokens: DesignTokens; physicalOk: boolean }
   | { step: 'error';      code: ErrorCode; message: string };
 
 type ErrorCode =
@@ -121,9 +123,15 @@ export async function POST(req: NextRequest): Promise<Response> {
   // Run the pipeline in the background; stream closes when done/errored.
   (async () => {
     try {
-      // Step 1 — screenshot
-      await send({ step: 'screenshot', message: `Capturing screenshot of ${targetUrl} …` });
+      // ── Step 1 ── Kick off physical extraction immediately (runs in parallel)
+      // It uses Puppeteer so it's independent of the screenshot API.
+      // By the time Claude Vision finishes (~4 s), it should already be done.
+      const physicalPromise = extractPhysicalTokens(targetUrl).catch(() => null);
 
+      await send({ step: 'screenshot', message: `Capturing screenshot of ${targetUrl} …` });
+      await send({ step: 'physical',   message: 'Reading computed CSS styles in parallel …' });
+
+      // ── Step 2 ── Screenshot
       let screenshotBuffer: Buffer;
       try {
         screenshotBuffer = await captureScreenshot(targetUrl);
@@ -136,7 +144,7 @@ export async function POST(req: NextRequest): Promise<Response> {
         return;
       }
 
-      // Step 2 — Claude Vision extraction
+      // ── Step 3 ── Claude Vision extraction
       await send({ step: 'extract', message: 'Screenshot captured. Analysing design system with Claude Vision …' });
 
       let tokens: DesignTokens;
@@ -148,8 +156,18 @@ export async function POST(req: NextRequest): Promise<Response> {
         return;
       }
 
-      // Step 3 — done
-      await send({ step: 'done', tokens });
+      // ── Step 4 ── Merge physical data (Claude took ~4 s; physical is likely done)
+      const physical = await physicalPromise;
+      if (physical) {
+        tokens = {
+          ...tokens,
+          spacingSystem:   physical.spacingSystem,
+          typographyScale: physical.typographyScale,
+        };
+      }
+
+      // ── Step 5 ── Done
+      await send({ step: 'done', tokens, physicalOk: physical !== null });
     } catch (err) {
       await send({
         step: 'error',
