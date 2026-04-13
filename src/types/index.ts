@@ -183,6 +183,13 @@ export interface DesignTokens {
     };
   };
   /**
+   * Design Critique generated in Phase 1 of the two-turn extraction pipeline.
+   * Contains semantic color analysis, spacing math, typography sampling, and
+   * visual language characterisation. Useful for debugging token decisions.
+   */
+  designCritique?: string;
+
+  /**
    * Precise typography scale measured from computed CSS.
    * When present, px/rem values are exact and role assignments are data-driven.
    */

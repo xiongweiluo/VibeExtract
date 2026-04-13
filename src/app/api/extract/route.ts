@@ -13,8 +13,9 @@ export const runtime = 'nodejs'; // Buffer + axios — not compatible with Edge 
 type ExtractEvent =
   | { step: 'screenshot'; message: string }
   | { step: 'physical';   message: string }
+  | { step: 'critique';   message: string }
   | { step: 'extract';    message: string }
-  | { step: 'done';       tokens: DesignTokens; physicalOk: boolean }
+  | { step: 'done';       tokens: DesignTokens; physicalOk: boolean; designCritique?: string }
   | { step: 'error';      code: ErrorCode; message: string };
 
 type ErrorCode =
@@ -144,12 +145,18 @@ export async function POST(req: NextRequest): Promise<Response> {
         return;
       }
 
-      // ── Step 3 ── Claude Vision extraction
-      await send({ step: 'extract', message: 'Screenshot captured. Analysing design system with Claude Vision …' });
+      // ── Step 3 ── Claude Vision: Phase 1 (Design Critique) + Phase 2 (Token Extraction)
+      await send({ step: 'critique', message: 'Screenshot captured. Running Design Critique — analysing color semantics, spacing math & typography …' });
+      await send({ step: 'extract',  message: 'Translating critique into calibrated design tokens …' });
 
       let tokens: DesignTokens;
+      let designCritique: string | undefined;
       try {
-        tokens = await extractDesignSystem(screenshotBuffer, 'image/png');
+        const result = await extractDesignSystem(screenshotBuffer, 'image/png');
+        designCritique = result.designCritique;
+        // Strip the critique from the tokens object before merging physical data
+        const { designCritique: _dc, ...rest } = result;
+        tokens = rest as DesignTokens;
       } catch (err) {
         const msg = err instanceof ExtractionError ? err.message : String(err);
         await send({ step: 'error', code: 'EXTRACTION_FAILED', message: msg });
@@ -191,7 +198,7 @@ export async function POST(req: NextRequest): Promise<Response> {
       }
 
       // ── Step 5 ── Done
-      await send({ step: 'done', tokens, physicalOk: physical !== null });
+      await send({ step: 'done', tokens, physicalOk: physical !== null, designCritique });
     } catch (err) {
       await send({
         step: 'error',

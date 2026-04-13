@@ -1,48 +1,146 @@
 import Anthropic from '@anthropic-ai/sdk';
 import type { DesignTokens } from '../types';
 
-const MODEL = 'claude-haiku-4-5-20251001';
+// ── Model ─────────────────────────────────────────────────────────────────────
+// Upgraded from Haiku to Sonnet — critique-first reasoning requires stronger
+// visual intelligence. Haiku cannot reliably infer color semantics or
+// multi-element sampling patterns.
+const MODEL = 'claude-sonnet-4-6';
 
-// ── System prompt ─────────────────────────────────────────────────────────────
+// ─────────────────────────────────────────────────────────────────────────────
+// PHASE 1 — Design Critique
+//
+// Force the AI to think before it outputs. The critique is a chain-of-thought
+// that anchors all subsequent token decisions.
+// ─────────────────────────────────────────────────────────────────────────────
 
-const SYSTEM_PROMPT = `You are a world-class UI architect and design systems engineer.
-Given a screenshot of any website, you extract a complete, schema-conformant design token set
-and return it as a single JSON object — no markdown fences, no commentary, no trailing text.
+const CRITIQUE_SYSTEM = `You are a senior design systems architect reviewing a UI screenshot.
+Your task is to produce a rigorous Design Critique — a structured analysis that will guide
+precise design-token extraction. This is NOT the final output; it is your thinking tool.
 
-The JSON must exactly conform to this TypeScript interface:
+Write the critique in four labelled sections:
+
+## COLOR SEMANTICS
+Identify every distinct color used in the UI. For each, assign a semantic role:
+  Brand-Primary    — dominant CTA / interactive color
+  Brand-Secondary  — supporting accent or complementary hue
+  Brand-Accent     — hover / highlight state
+  Neutral-Surface  — card / panel background (not the page itself)
+  Neutral-Base     — main page/body background
+  Neutral-Overlay  — modal scrim / tooltip backdrop
+  Text-Main        — primary body text
+  Text-Muted       — secondary / helper / metadata text
+  Text-Inverse     — text on dark or branded backgrounds
+  Border-Default   — separator / outline color
+  Status-Success / Status-Warning / Status-Error — feedback indicators
+
+For each role, state:
+  - The approximate HEX or rgba value you observe
+  - WHY you classify it in this role (dominant area, interaction pattern, contrast ratio intent)
+  - Whether it appears in multiple unrelated components (cross-context consistency check)
+
+## SPACING MATHEMATICS
+Sample at least FIVE distinct spacing measurements (gaps between cards, padding inside buttons,
+section margins, nav height, list row height). Write them as raw pixel estimates.
+Then:
+  1. List the raw values in ascending order.
+  2. Find the base unit: is the GCD of all values 4px or 8px?
+  3. For each raw value, show the SNAPPED value: nearest multiple of the base unit.
+  4. State the detected baseUnit explicitly.
+
+Example:
+  raw values: 7px, 16px, 23px, 32px, 47px
+  GCD analysis → base unit = 8px
+  snapped: 8px, 16px, 24px, 32px, 48px
+
+## TYPOGRAPHY HIERARCHY
+Sample at least THREE instances each of: hero/display text, section headings, body text, and labels.
+For each group:
+  - Estimated pixel size (from visual comparison)
+  - Apparent font weight
+  - Line-height ratio
+  - Role in the hierarchy (H1, H2, body, caption…)
+
+Then derive a consistent 8-step scale (xs → 4xl) from these samples.
+
+## VISUAL LANGUAGE
+In 3–5 precise descriptors, characterise this design's personality.
+Avoid generic words ("modern", "clean", "minimal").
+Prefer specific terms: "neo-brutalist", "soft-glassmorphic", "data-dense monochrome",
+"editorial swiss-grid", "saturated consumer-brand", "system-UI enterprise", etc.
+
+Be specific. Be opinionated. Your critique will be passed directly to the extraction step.`;
+
+const CRITIQUE_USER = `Study this UI screenshot carefully.
+Produce a Design Critique following the four-section format in your instructions.
+Be analytical and specific — raw measurements, named color roles, snapped spacing values.`;
+
+// ─────────────────────────────────────────────────────────────────────────────
+// PHASE 2 — Token Extraction
+//
+// The AI receives its own critique as context and must now produce exact JSON.
+// The critique has already done the heavy thinking; this step is translation.
+// ─────────────────────────────────────────────────────────────────────────────
+
+const EXTRACTION_SYSTEM = `You are a design systems engineer converting a Design Critique into a
+precise JSON token set. You have already performed the analysis. Now translate it faithfully.
+
+Rules you must follow WITHOUT EXCEPTION:
+
+COLOR RULES
+  • Never copy a raw screen-captured value blindly. Use the semantic roles from your critique.
+  • All color values must be 6-digit HEX (#RRGGBB), except background.overlay which may use rgba().
+  • Map roles: Brand-Primary → color.brand.primary, Neutral-Base → color.background.page, etc.
+  • If a status color was not visible, use the nearest on-brand tint or these defaults:
+    success=#10B981, warning=#F59E0B, error=#EF4444.
+
+SPACING RULES
+  • Use ONLY the snapped values from your spacing analysis — never raw measured values.
+  • If baseUnit=4, the scale multipliers are: xs=1×, sm=2×, md=4×, lg=6×, xl=8×, 2xl=12×, 3xl=16×
+  • If baseUnit=8, the scale multipliers are: xs=1×, sm=2×, md=4×, lg=6×, xl=8×, 2xl=12×, 3xl=16×
+  • Compute the scale arithmetically. Do not invent arbitrary values.
+
+TYPOGRAPHY RULES
+  • Derive font sizes from your sampled hierarchy — use the closest clean pixel value.
+  • lineHeight must be a unitless ratio string (e.g. "1.5", not "24px").
+  • If only one typeface is visible, set families.body = families.heading.
+  • families.mono = "ui-monospace, monospace" if no monospace font is detected.
+
+SCHEMA
+The JSON must exactly conform to this TypeScript interface — no extra keys, no missing keys:
 
 interface DesignTokens {
   color: {
-    brand:      { primary: string; secondary: string; accent: string };     // exact 6-digit HEX
-    background: { page: string; surface: string; overlay: string };          // overlay may use rgba()
+    brand:      { primary: string; secondary: string; accent: string };
+    background: { page: string; surface: string; overlay: string };
     text:       { primary: string; secondary: string; inverse: string };
     border:     string;
     status:     { success: string; warning: string; error: string };
   };
   typography: {
-    families: { body: string; heading: string; mono: string };               // font-family stacks
-    weights:  { regular: string; medium: string; semibold: string; bold: string }; // e.g. "400"
+    families: { body: string; heading: string; mono: string };
+    weights:  { regular: string; medium: string; semibold: string; bold: string };
     scale: {
-      xs:    { size: string; lineHeight: string };   // caption / label
-      sm:    { size: string; lineHeight: string };   // small body
-      base:  { size: string; lineHeight: string };   // default body
-      lg:    { size: string; lineHeight: string };   // lead paragraph
-      xl:    { size: string; lineHeight: string };   // card title
-      "2xl": { size: string; lineHeight: string };   // section heading
-      "3xl": { size: string; lineHeight: string };   // page heading
-      "4xl": { size: string; lineHeight: string };   // hero / display
+      xs:    { size: string; lineHeight: string };
+      sm:    { size: string; lineHeight: string };
+      base:  { size: string; lineHeight: string };
+      lg:    { size: string; lineHeight: string };
+      xl:    { size: string; lineHeight: string };
+      "2xl": { size: string; lineHeight: string };
+      "3xl": { size: string; lineHeight: string };
+      "4xl": { size: string; lineHeight: string };
     };
   };
   spacing: {
-    baseUnit: number;                                                         // 4 or 8 (px)
+    baseUnit: number;
     scale: { xs: string; sm: string; md: string; lg: string; xl: string; "2xl": string; "3xl": string };
   };
   radius: { none: string; sm: string; md: string; lg: string; xl: string; full: string };
-  shadow: { sm: string; md: string; lg: string; xl: string };                // full CSS box-shadow values
+  shadow: { sm: string; md: string; lg: string; xl: string };
   siteArchitecture: {
-    paradigm: "landing" | "saas-app" | "e-commerce" | "content-site" | "portfolio" | "docs" | "social-feed" | "dashboard";
-    density:  "compact" | "comfortable" | "spacious";
-    motif:    string;                                                         // 3–5 comma-separated tags
+    paradigm: "landing"|"saas-app"|"e-commerce"|"content-site"|"portfolio"|"docs"|"social-feed"|"dashboard";
+    density:  "compact"|"comfortable"|"spacious";
+    motif:    string;
     layout:   { type: "single-column"|"multi-column"|"sidebar"|"grid"|"masonry"; navPosition: "top-fixed"|"top-static"|"side"|"floating"|"minimal" };
     visualWeight: { dominant: "typography"|"imagery"|"data"|"color"; hierarchy: "editorial"|"functional"|"expressive" };
   };
@@ -54,119 +152,25 @@ interface DesignTokens {
   };
 }
 
-═══════════════════════════════════════════════════════════════════════════
-EXTRACTION RULES
-═══════════════════════════════════════════════════════════════════════════
+OUTPUT ONLY the raw JSON object. No markdown fences, no commentary, no trailing text.
+Any character outside the JSON braces will cause a parse failure.`;
 
-COLOR
-  • All values must be 6-digit HEX (#RRGGBB) except background.overlay which may use rgba().
-  • brand.primary    = dominant interactive / CTA colour.
-  • brand.secondary  = supporting accent (may be a tint or complementary hue).
-  • brand.accent     = hover / highlight state colour (may equal secondary if unclear).
-  • status.success/warning/error = semantic feedback colours; if not visible, use
-    the closest on-brand tint or sensible defaults (#10B981 / #F59E0B / #EF4444).
-  • text.inverse     = text colour intended for dark/branded backgrounds (usually white or near-white).
+const EXTRACTION_USER = `Based on your Design Critique above, produce the DesignTokens JSON.
 
-TYPOGRAPHY
-  • families.body    = primary UI font used for body text.
-  • families.heading = heading font (may equal body if one typeface is used throughout).
-  • families.mono    = monospace font or "ui-monospace, monospace" if none detected.
-  • weights          = derive from visual usage; if only bold/normal visible, set
-    regular="400", medium="500", semibold="600", bold="700" as sensible defaults.
-  • scale            = measure from the visual hierarchy. Typical values:
-      xs   ≈ 11–13px / 1.4   (labels, captions)
-      sm   ≈ 13–14px / 1.5
-      base ≈ 15–17px / 1.6   (body copy)
-      lg   ≈ 18–20px / 1.5
-      xl   ≈ 20–24px / 1.4
-      2xl  ≈ 24–32px / 1.3
-      3xl  ≈ 32–48px / 1.2
-      4xl  ≈ 48–80px / 1.1   (hero headline)
-    Prefer px values. lineHeight must be a unitless ratio string, e.g. "1.5".
+Translate each section of your critique directly:
+  • COLOR SEMANTICS → color.*  (use semantic roles, never raw screen values)
+  • SPACING MATHEMATICS → spacing.baseUnit + spacing.scale  (use snapped values only)
+  • TYPOGRAPHY HIERARCHY → typography.scale  (use sampled step values)
+  • VISUAL LANGUAGE → siteArchitecture.motif  (use your precise descriptors)
 
-SPACING
-  • Identify the base grid unit (almost always 4 or 8 px).
-  • Compute scale deterministically from baseUnit:
-      xs = 1×, sm = 2×, md = 4×, lg = 6×, xl = 8×, 2xl = 12×, 3xl = 16×
-    Examples with base=4: xs="4px" sm="8px" md="16px" lg="24px" xl="32px" 2xl="48px" 3xl="64px"
-    Examples with base=8: xs="8px" sm="16px" md="32px" lg="48px" xl="64px" 2xl="96px" 3xl="128px"
+For the remaining fields (radius, shadow, siteArchitecture.*, skeleton.*):
+  re-examine the screenshot with fresh eyes and fill them precisely.
 
-RADIUS
-  • none = "0"  always.
-  • full = "9999px" always.
-  • sm   = input/badge radius (e.g. "4px" or "6px").
-  • md   = button/card radius (e.g. "8px" or "12px").
-  • lg   = panel/modal radius (e.g. "16px" or "20px").
-  • xl   = sheet/drawer radius (e.g. "24px" or "28px").
-  • A flat design → all small values; a bubbly design → large values.
+Return only the JSON object.`;
 
-SHADOW
-  • Observe the page's depth / elevation cues. Flat designs use very subtle or no shadows;
-    layered designs have distinct elevation levels.
-  • sm  = hairline (nearly invisible), md = card standard, lg = elevated panel, xl = modal/overlay.
-  • If the site is flat/neumorphic, make all shadows very subtle.
-  • If dramatic shadows are visible, use realistic rgba blur values.
-
-SITE ARCHITECTURE
-  • paradigm: choose the SINGLE best match:
-      landing      — marketing hero + sections + CTA rows
-      saas-app     — task-oriented UI, forms, data tables
-      e-commerce   — product listings, cart, checkout flow
-      content-site — text-dominant, articles, editorial
-      portfolio    — showcase, image-heavy
-      docs         — structured reference / knowledge base
-      social-feed  — repeating user-generated content cards / infinite scroll
-      dashboard    — metrics, charts, sidebar nav, dense data
-  • density: compact = tight gutters; spacious = generous breathing room.
-  • motif: 3–5 concise descriptors specific to THIS site's visual personality.
-    Avoid generic terms. Good: "neo-brutalist, saturated palette, heavy borders".
-    Bad: "modern, clean, minimal".
-  • layout.navPosition: top-fixed = sticky top nav; top-static = non-sticky top;
-    side = sidebar; floating = overlaid / transparent; minimal = hidden or very sparse.
-
-SKELETON
-  • hero.present    = true if a large above-the-fold hero section is visible.
-  • hero.layout     = spatial arrangement (centered / split / full-bleed / asymmetric / none).
-  • hero.headline   = extract the EXACT text from the largest visible heading (max 80 chars).
-                     If not readable, write a representative paraphrase.
-  • hero.ctaCount   = count primary CTA buttons in the hero zone.
-  • nav.brand       = extract the exact brand/logo name from the navigation bar.
-  • nav.items       = list navigation link labels visible in the top or side nav (max 6).
-  • cards.present   = true if a grid or list of repeating card components is visible.
-  • cards.gridColumns = 0 if no cards; otherwise count columns in the primary card grid.
-  • cards.hasShadow = true if cards carry a visible box-shadow / elevation.
-  • footer.present  = true if a footer is visible.
-  • footer.columns  = estimate number of footer content columns.
-
-OUTPUT ONLY the raw JSON object. Any character outside the JSON will cause a parse error.`;
-
-// ── User prompt ───────────────────────────────────────────────────────────────
-
-const USER_PROMPT = `Analyse this UI screenshot carefully and extract the full DesignTokens object.
-
-Work through each section in order:
-
-1. COLORS — identify brand primary, secondary, accent; page/surface/overlay backgrounds;
-   primary/secondary/inverse text; border colour; status colours.
-
-2. TYPOGRAPHY — identify font families (body, heading, mono); font weights in use;
-   measure or estimate all 8 scale steps (xs → 4xl) with sizes and line-heights.
-
-3. SPACING — identify the base grid unit (4 or 8 px) then compute the full named scale.
-
-4. RADIUS — observe corner radii on inputs, buttons, cards, modals; assign none/sm/md/lg/xl/full.
-
-5. SHADOW — observe depth and elevation cues; assign sm/md/lg/xl box-shadow values.
-
-6. SITE ARCHITECTURE — classify the paradigm, density, motif; describe layout type and nav position;
-   analyse visual weight (dominant element, design hierarchy philosophy).
-
-7. SKELETON — extract the actual hero headline text, nav brand name and item labels, card grid info,
-   footer presence. Be specific — use text you can read in the screenshot.
-
-Return only the JSON object. No other text.`;
-
-// ── Error class ───────────────────────────────────────────────────────────────
+// ─────────────────────────────────────────────────────────────────────────────
+// Error class
+// ─────────────────────────────────────────────────────────────────────────────
 
 export class ExtractionError extends Error {
   constructor(
@@ -178,38 +182,110 @@ export class ExtractionError extends Error {
   }
 }
 
-// ── Main export ───────────────────────────────────────────────────────────────
+// ─────────────────────────────────────────────────────────────────────────────
+// Post-processing: snap spacing values to the 4 / 8 px grid
+//
+// Even with strong prompting, the AI occasionally drifts (e.g. outputs "12px"
+// when baseUnit=8 — which should be "16px"). This guard layer corrects it.
+// ─────────────────────────────────────────────────────────────────────────────
+
+const SCALE_MULTIPLIERS: Record<string, number> = {
+  xs: 1, sm: 2, md: 4, lg: 6, xl: 8, '2xl': 12, '3xl': 16,
+};
+
+function snapSpacing(tokens: DesignTokens): DesignTokens {
+  const base = tokens.spacing.baseUnit;
+  // Accept only 4 or 8; snap to nearest otherwise.
+  const unit = base <= 6 ? 4 : 8;
+
+  const snapped: Record<string, string> = {};
+  for (const [key, mult] of Object.entries(SCALE_MULTIPLIERS)) {
+    snapped[key] = `${unit * mult}px`;
+  }
+
+  return {
+    ...tokens,
+    spacing: {
+      baseUnit: unit,
+      scale: snapped as DesignTokens['spacing']['scale'],
+    },
+  };
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+// Main export
+// ─────────────────────────────────────────────────────────────────────────────
 
 export async function extractDesignSystem(
   screenshotBuffer: Buffer,
   mimeType: 'image/png' | 'image/jpeg' | 'image/gif' | 'image/webp' = 'image/png',
-): Promise<DesignTokens> {
+): Promise<DesignTokens & { designCritique: string }> {
   const client = new Anthropic();
 
-  const response = await client.messages.create({
+  const imageBlock: Anthropic.ImageBlockParam = {
+    type: 'image',
+    source: {
+      type: 'base64',
+      media_type: mimeType,
+      data: screenshotBuffer.toString('base64'),
+    },
+  };
+
+  // ── Turn 1 ── Design Critique ───────────────────────────────────────────────
+  // The AI analyses the image holistically: color semantics, spacing math,
+  // typography sampling, visual language. No JSON yet.
+
+  const critiqueResponse = await client.messages.create({
     model: MODEL,
     max_tokens: 2048,
-    system: SYSTEM_PROMPT,
+    system: CRITIQUE_SYSTEM,
     messages: [
       {
         role: 'user',
-        content: [
-          {
-            type: 'image',
-            source: { type: 'base64', media_type: mimeType, data: screenshotBuffer.toString('base64') },
-          },
-          { type: 'text', text: USER_PROMPT },
-        ],
+        content: [imageBlock, { type: 'text', text: CRITIQUE_USER }],
       },
     ],
   });
 
-  const firstBlock = response.content[0];
-  if (firstBlock.type !== 'text') {
-    throw new ExtractionError('Unexpected response type from Claude API');
+  const critiqueBlock = critiqueResponse.content[0];
+  if (critiqueBlock.type !== 'text') {
+    throw new ExtractionError('Unexpected non-text response in critique phase.');
+  }
+  const designCritique = critiqueBlock.text.trim();
+
+  // ── Turn 2 ── Token Extraction ──────────────────────────────────────────────
+  // The AI receives the image + its own critique and translates the analysis
+  // into the final JSON. The critique acts as a mandatory reasoning scaffold.
+
+  const extractionResponse = await client.messages.create({
+    model: MODEL,
+    max_tokens: 3072,
+    system: EXTRACTION_SYSTEM,
+    messages: [
+      // Original user message (image + critique request)
+      {
+        role: 'user',
+        content: [imageBlock, { type: 'text', text: CRITIQUE_USER }],
+      },
+      // AI's own critique (verbatim — the model "owns" it)
+      {
+        role: 'assistant',
+        content: designCritique,
+      },
+      // Extraction request: translate critique → JSON
+      {
+        role: 'user',
+        content: EXTRACTION_USER,
+      },
+    ],
+  });
+
+  const extractionBlock = extractionResponse.content[0];
+  if (extractionBlock.type !== 'text') {
+    throw new ExtractionError('Unexpected non-text response in extraction phase.');
   }
 
-  const raw = firstBlock.text.trim();
+  const raw = extractionBlock.text.trim();
   const jsonText = raw
     .replace(/^```(?:json)?\s*/i, '')
     .replace(/\s*```$/i, '')
@@ -219,14 +295,20 @@ export async function extractDesignSystem(
   try {
     tokens = JSON.parse(jsonText) as DesignTokens;
   } catch {
-    throw new ExtractionError('Claude returned non-JSON output.', raw);
+    throw new ExtractionError('Extraction phase returned non-JSON output.', raw);
   }
 
   validateTokens(tokens);
-  return tokens;
+
+  // Apply spacing grid correction as a safety net after validation.
+  const corrected = snapSpacing(tokens);
+
+  return { ...corrected, designCritique };
 }
 
-// ── Validation ────────────────────────────────────────────────────────────────
+// ─────────────────────────────────────────────────────────────────────────────
+// Validation
+// ─────────────────────────────────────────────────────────────────────────────
 
 function validateTokens(t: unknown): asserts t is DesignTokens {
   const required: string[] = [
