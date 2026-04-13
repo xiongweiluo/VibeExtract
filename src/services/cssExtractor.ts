@@ -58,6 +58,13 @@ export interface SkeletonHints {
   footer: { present: boolean; columns: number };
 }
 
+export interface AssetCollection {
+  /** External image URLs (excluding data: URIs), capped at 50 entries */
+  images: string[];
+  /** SVG file URLs and detected sprite sheet references */
+  svgs: string[];
+}
+
 // ── Internal helpers ─────────────────────────────────────────────────────────
 
 function gcd(a: number, b: number): number {
@@ -199,6 +206,7 @@ interface RawBrowserData {
   families:     string[];
   rootFontSize: number;
   skeleton:     SkeletonHints;
+  assets:       { images: string[]; svgs: string[] };
 }
 
 /**
@@ -340,6 +348,88 @@ function browserExtract(): RawBrowserData {
     if (footerColumns === 0) footerColumns = 3;
   }
 
+  // ── Asset detection ──────────────────────────────────────────────────────────
+  // Collect real image and SVG URLs from the live DOM — no guessing.
+
+  const imageUrlSet = new Set<string>();
+  const svgUrlSet   = new Set<string>();
+
+  // 1. <img src> and <img srcset>
+  document.querySelectorAll('img').forEach(img => {
+    const src = (img as HTMLImageElement).src;
+    if (src && !src.startsWith('data:') && src.startsWith('http')) {
+      if (src.includes('.svg')) {
+        svgUrlSet.add(src);
+      } else {
+        imageUrlSet.add(src);
+      }
+    }
+    // srcset="url1 1x, url2 2x"
+    const srcset = img.getAttribute('srcset') ?? '';
+    if (srcset) {
+      srcset.split(',').forEach(entry => {
+        const url = entry.trim().split(/\s+/)[0];
+        if (url && url.startsWith('http') && !url.startsWith('data:')) {
+          imageUrlSet.add(url);
+        }
+      });
+    }
+  });
+
+  // 2. <picture><source srcset>
+  document.querySelectorAll('source[srcset]').forEach(src => {
+    const srcset = src.getAttribute('srcset') ?? '';
+    srcset.split(',').forEach(entry => {
+      const url = entry.trim().split(/\s+/)[0];
+      if (url && url.startsWith('http')) imageUrlSet.add(url);
+    });
+  });
+
+  // 3. CSS background-image on prominent structural elements
+  const bgTargets = Array.from(
+    document.querySelectorAll<Element>(
+      '[class*="hero"], [class*="banner"], [class*="cover"], [class*="bg"], section, header, main',
+    ),
+  ).slice(0, 15);
+  for (const el of bgTargets) {
+    const bg = window.getComputedStyle(el).backgroundImage;
+    if (bg && bg !== 'none') {
+      // May contain multiple values: "url(...), url(...)"
+      const matches = bg.matchAll(/url\(["']?([^"')]+)["']?\)/g);
+      for (const m of matches) {
+        const url = m[1];
+        if (url && !url.startsWith('data:') && url.startsWith('http')) {
+          imageUrlSet.add(url);
+        }
+      }
+    }
+  }
+
+  // 4. SVG <use href> sprite references
+  document.querySelectorAll('use').forEach(useEl => {
+    const href =
+      useEl.getAttribute('href') ??
+      useEl.getAttribute('xlink:href') ?? '';
+    // External sprite sheet (not an in-page anchor)
+    if (href && !href.startsWith('#') && href.includes('.svg')) {
+      const abs = href.startsWith('http') ? href : location.origin + href;
+      svgUrlSet.add(abs);
+    }
+  });
+
+  // 5. <object type="image/svg+xml"> and <embed>
+  document.querySelectorAll('object[data], embed[src]').forEach(el => {
+    const src =
+      el.getAttribute('data') ?? el.getAttribute('src') ?? '';
+    if (src && src.includes('.svg') && src.startsWith('http')) {
+      svgUrlSet.add(src);
+    }
+  });
+
+  // Deduplicate and cap
+  const detectedImages = Array.from(imageUrlSet).slice(0, 50);
+  const detectedSvgs   = Array.from(svgUrlSet).slice(0, 20);
+
   return {
     spacing:      Array.from(spacingSet).sort((a, b) => a - b),
     fonts:        Array.from(fontMap.entries())
@@ -353,6 +443,7 @@ function browserExtract(): RawBrowserData {
       cards:  { present: cardsPresent, gridColumns, hasShadow },
       footer: { present: footerPresent, columns: footerColumns },
     },
+    assets: { images: detectedImages, svgs: detectedSvgs },
   };
 }
 
@@ -362,6 +453,7 @@ export async function extractPhysicalTokens(url: string): Promise<{
   spacingSystem:   SpacingSystem;
   typographyScale: TypographyScale;
   skeleton:        SkeletonHints;
+  assets:          AssetCollection;
 }> {
   const browser = await puppeteer.launch({
     headless: true,
@@ -404,6 +496,7 @@ export async function extractPhysicalTokens(url: string): Promise<{
       spacingSystem:   buildSpacingSystem(raw.spacing),
       typographyScale: buildTypographyScale(raw.fonts, raw.families, raw.rootFontSize),
       skeleton:        raw.skeleton,
+      assets:          raw.assets,
     };
   } finally {
     await browser.close();

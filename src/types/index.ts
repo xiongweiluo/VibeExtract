@@ -205,4 +205,16 @@ export interface DesignTokens {
       role:       string;
     }>;
   };
+
+  /**
+   * Asset inventory collected by Puppeteer — image and SVG URLs found on the page.
+   * Images include <img src>, <img srcset>, and CSS background-image sources.
+   * SVGs include <img src="*.svg">, <use href> references, and detected sprite sheets.
+   */
+  assets?: {
+    /** External image URLs (excluding data: URIs), capped at 50 entries */
+    images: string[];
+    /** SVG file URLs and detected sprite sheet references */
+    svgs: string[];
+  };
 }

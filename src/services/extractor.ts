@@ -1,5 +1,56 @@
 import Anthropic from '@anthropic-ai/sdk';
 import type { DesignTokens } from '../types';
+import type { SpacingSystem, TypographyScale } from './cssExtractor';
+
+// ── Physical calibration context ─────────────────────────────────────────────
+// When Puppeteer measurements are available, we serialize them into a compact
+// text block that the AI must treat as authoritative ground truth. This prevents
+// the AI from guessing sizes it can only estimate visually.
+
+interface PhysicalContext {
+  spacingSystem?:   SpacingSystem;
+  typographyScale?: TypographyScale;
+}
+
+function buildPhysicalCalibrationBlock(ctx: PhysicalContext | undefined): string {
+  if (!ctx || (!ctx.spacingSystem && !ctx.typographyScale)) return '';
+
+  const lines: string[] = [
+    '',
+    '## PHYSICAL MEASUREMENTS (computed CSS — treat as authoritative ground truth)',
+    'These values were measured directly from the live DOM via getComputedStyle().',
+    'They override any visual estimates in the sections above. Calibrate all tokens to match.',
+    '',
+  ];
+
+  if (ctx.spacingSystem) {
+    const s = ctx.spacingSystem;
+    lines.push(`### Spacing`);
+    lines.push(`  Base unit: ${s.baseUnit}px`);
+    lines.push(`  Snapped scale: ${s.steps.join(', ')}`);
+    lines.push(`  Named tokens: xs=${s.named.xs} sm=${s.named.sm} md=${s.named.md} lg=${s.named.lg} xl=${s.named.xl} 2xl=${s.named['2xl']} 3xl=${s.named['3xl']}`);
+    lines.push('');
+  }
+
+  if (ctx.typographyScale) {
+    const t = ctx.typographyScale;
+    lines.push(`### Typography`);
+    lines.push(`  Base body size: ${t.baseSize} (${t.baseSizeRem})`);
+    if (t.families.length > 0) {
+      lines.push(`  Detected font families: ${t.families.join(', ')}`);
+    }
+    lines.push(`  Measured type steps (px | rem | lineHeight | weight | role):`);
+    for (const step of t.steps) {
+      lines.push(`    ${step.px} | ${step.rem} | lh:${step.lineHeight} | w:${step.weight} | ${step.role}`);
+    }
+    lines.push('');
+  }
+
+  lines.push('Use these exact px/rem values when populating typography.scale and spacing fields.');
+  lines.push('If a measured step maps to a scale level, use its measured value, not a visual estimate.');
+
+  return lines.join('\n');
+}
 
 // ── Model ─────────────────────────────────────────────────────────────────────
 // Upgraded from Haiku to Sonnet — critique-first reasoning requires stronger
@@ -219,6 +270,7 @@ function snapSpacing(tokens: DesignTokens): DesignTokens {
 export async function extractDesignSystem(
   screenshotBuffer: Buffer,
   mimeType: 'image/png' | 'image/jpeg' | 'image/gif' | 'image/webp' = 'image/png',
+  physicalData?: PhysicalContext,
 ): Promise<DesignTokens & { designCritique: string }> {
   const client = new Anthropic();
 
@@ -253,9 +305,17 @@ export async function extractDesignSystem(
   }
   const designCritique = critiqueBlock.text.trim();
 
+  // Build physical calibration block — appended to the critique so the AI
+  // "owns" the measured data before it starts generating JSON.
+  const physicalBlock = buildPhysicalCalibrationBlock(physicalData);
+  const calibratedCritique = physicalBlock
+    ? `${designCritique}\n${physicalBlock}`
+    : designCritique;
+
   // ── Turn 2 ── Token Extraction ──────────────────────────────────────────────
-  // The AI receives the image + its own critique and translates the analysis
-  // into the final JSON. The critique acts as a mandatory reasoning scaffold.
+  // The AI receives the image + its own critique (augmented with physical
+  // measurements if available) and translates the analysis into final JSON.
+  // The calibration block binds visual estimates to real computed values.
 
   const extractionResponse = await client.messages.create({
     model: MODEL,
@@ -267,10 +327,11 @@ export async function extractDesignSystem(
         role: 'user',
         content: [imageBlock, { type: 'text', text: CRITIQUE_USER }],
       },
-      // AI's own critique (verbatim — the model "owns" it)
+      // AI's own critique, augmented with measured physical values.
+      // The model "owns" this combined text — it will use measured px/rem as ground truth.
       {
         role: 'assistant',
-        content: designCritique,
+        content: calibratedCritique,
       },
       // Extraction request: translate critique → JSON
       {

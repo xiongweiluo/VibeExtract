@@ -2,6 +2,7 @@ import { NextRequest } from 'next/server';
 import axios, { AxiosError } from 'axios';
 import { extractDesignSystem, ExtractionError } from '../../../services/extractor';
 import { extractPhysicalTokens } from '../../../services/cssExtractor';
+import { writeDesignSpec } from '../../../services/specWriter';
 import type { DesignTokens } from '../../../types';
 
 export const runtime = 'nodejs'; // Buffer + axios — not compatible with Edge runtime
@@ -15,6 +16,7 @@ type ExtractEvent =
   | { step: 'physical';   message: string }
   | { step: 'critique';   message: string }
   | { step: 'extract';    message: string }
+  | { step: 'spec';       message: string; specPath: string }
   | { step: 'done';       tokens: DesignTokens; physicalOk: boolean; designCritique?: string }
   | { step: 'error';      code: ErrorCode; message: string };
 
@@ -124,15 +126,16 @@ export async function POST(req: NextRequest): Promise<Response> {
   // Run the pipeline in the background; stream closes when done/errored.
   (async () => {
     try {
-      // ── Step 1 ── Kick off physical extraction immediately (runs in parallel)
-      // It uses Puppeteer so it's independent of the screenshot API.
-      // By the time Claude Vision finishes (~4 s), it should already be done.
+      // ── Step 1 ── Kick off physical extraction + screenshot capture in parallel.
+      // Puppeteer and the screenshot API both start immediately and race each other.
+      // We then pass physical measurements into Claude before it starts reasoning —
+      // this is the "physical calibration" that anchors AI inference to real data.
       const physicalPromise = extractPhysicalTokens(targetUrl).catch(() => null);
 
       await send({ step: 'screenshot', message: `Capturing screenshot of ${targetUrl} …` });
-      await send({ step: 'physical',   message: 'Reading computed CSS styles in parallel …' });
+      await send({ step: 'physical',   message: 'Puppeteer reading computed CSS styles in parallel …' });
 
-      // ── Step 2 ── Screenshot
+      // ── Step 2 ── Capture screenshot (physical extraction races alongside)
       let screenshotBuffer: Buffer;
       try {
         screenshotBuffer = await captureScreenshot(targetUrl);
@@ -145,16 +148,37 @@ export async function POST(req: NextRequest): Promise<Response> {
         return;
       }
 
+      // ── Step 2b ── Try to collect physical data before handing off to Claude.
+      // Screenshot took ~2–4 s; Puppeteer typically finishes in the same window.
+      // Give it up to 2 additional seconds before proceeding without it.
+      // (We will still await the full result later for the merge step.)
+      const physicalForClaude = await Promise.race([
+        physicalPromise,
+        new Promise<null>(resolve => setTimeout(() => resolve(null), 2_000)),
+      ]);
+
       // ── Step 3 ── Claude Vision: Phase 1 (Design Critique) + Phase 2 (Token Extraction)
-      await send({ step: 'critique', message: 'Screenshot captured. Running Design Critique — analysing color semantics, spacing math & typography …' });
-      await send({ step: 'extract',  message: 'Translating critique into calibrated design tokens …' });
+      // Physical measurements, if available, are injected directly into the
+      // critique context so the AI uses real px/rem values instead of visual guesses.
+      await send({
+        step:    'critique',
+        message: physicalForClaude
+          ? 'Physical data ready. Running Design Critique calibrated with computed CSS measurements …'
+          : 'Running Design Critique — analysing color semantics, spacing math & typography …',
+      });
+      await send({ step: 'extract', message: 'Translating calibrated critique into design tokens …' });
 
       let tokens: DesignTokens;
       let designCritique: string | undefined;
       try {
-        const result = await extractDesignSystem(screenshotBuffer, 'image/png');
+        const result = await extractDesignSystem(
+          screenshotBuffer,
+          'image/png',
+          physicalForClaude
+            ? { spacingSystem: physicalForClaude.spacingSystem, typographyScale: physicalForClaude.typographyScale }
+            : undefined,
+        );
         designCritique = result.designCritique;
-        // Strip the critique from the tokens object before merging physical data
         const { designCritique: _dc, ...rest } = result;
         tokens = rest as DesignTokens;
       } catch (err) {
@@ -163,8 +187,8 @@ export async function POST(req: NextRequest): Promise<Response> {
         return;
       }
 
-      // ── Step 4 ── Merge physical data (Claude took ~4 s; physical is likely done)
-      const physical = await physicalPromise;
+      // ── Step 4 ── Merge full physical data (always settled by now)
+      const physical = physicalForClaude ?? await physicalPromise;
       if (physical) {
         const sk = physical.skeleton;
         tokens = {
@@ -172,6 +196,7 @@ export async function POST(req: NextRequest): Promise<Response> {
           spacingSystem:   physical.spacingSystem,
           typographyScale: physical.typographyScale,
           // Physical DOM extraction can read exact text — prefer it over AI inference
+          assets: physical.assets,
           skeleton: {
             ...tokens.skeleton,
             nav: {
@@ -197,7 +222,20 @@ export async function POST(req: NextRequest): Promise<Response> {
         };
       }
 
-      // ── Step 5 ── Done
+      // ── Step 5 ── Write design spec to docs/research/
+      // Non-fatal: a spec write failure must not block the client from receiving tokens.
+      try {
+        const spec = await writeDesignSpec(targetUrl, tokens, designCritique ?? '');
+        await send({
+          step:     'spec',
+          message:  `Design spec written (visual weight: ${spec.verdict})`,
+          specPath: spec.filePath,
+        });
+      } catch {
+        // Spec write failed silently — tokens are still complete
+      }
+
+      // ── Step 6 ── Done
       await send({ step: 'done', tokens, physicalOk: physical !== null, designCritique });
     } catch (err) {
       await send({
