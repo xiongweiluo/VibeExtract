@@ -65,18 +65,46 @@ function ColorSwatch({ label, value }: { label: string; value: string }) {
 function buildCSSVars(t: DesignTokens): string {
   const lines = [
     ':root {',
-    `  --color-primary:   ${t.colors.brand.primary};`,
-    `  --color-secondary: ${t.colors.brand.secondary};`,
-    `  --color-bg:        ${t.colors.background.main};`,
-    `  --color-card:      ${t.colors.background.card};`,
-    `  --color-text:      ${t.colors.text.base};`,
-    `  --color-muted:     ${t.colors.text.muted};`,
-    `  --color-border:    ${t.colors.border};`,
-    `  --radius-sm:       ${t.borderRadius.small};`,
-    `  --radius-md:       ${t.borderRadius.medium};`,
-    `  --radius-lg:       ${t.borderRadius.large};`,
-    `  --font-sans:       ${t.typography.sans};`,
-    `  --heading-weight:  ${t.typography.headingWeight};`,
+    `  --color-primary:   ${t.color.brand.primary};`,
+    `  --color-secondary: ${t.color.brand.secondary};`,
+    `  --color-accent:    ${t.color.brand.accent};`,
+    `  --color-bg:        ${t.color.background.page};`,
+    `  --color-surface:   ${t.color.background.surface};`,
+    `  --color-text:      ${t.color.text.primary};`,
+    `  --color-muted:     ${t.color.text.secondary};`,
+    `  --color-inverse:   ${t.color.text.inverse};`,
+    `  --color-border:    ${t.color.border};`,
+    `  --color-success:   ${t.color.status.success};`,
+    `  --color-warning:   ${t.color.status.warning};`,
+    `  --color-error:     ${t.color.status.error};`,
+    `  --radius-none: ${t.radius.none};`,
+    `  --radius-sm:   ${t.radius.sm};`,
+    `  --radius-md:   ${t.radius.md};`,
+    `  --radius-lg:   ${t.radius.lg};`,
+    `  --radius-xl:   ${t.radius.xl};`,
+    `  --radius-full: ${t.radius.full};`,
+    `  --shadow-sm: ${t.shadow.sm};`,
+    `  --shadow-md: ${t.shadow.md};`,
+    `  --shadow-lg: ${t.shadow.lg};`,
+    `  --shadow-xl: ${t.shadow.xl};`,
+    `  --font-body:    ${t.typography.families.body};`,
+    `  --font-heading: ${t.typography.families.heading};`,
+    `  --font-mono:    ${t.typography.families.mono};`,
+    `  --font-size-xs:   ${t.typography.scale.xs.size};`,
+    `  --font-size-sm:   ${t.typography.scale.sm.size};`,
+    `  --font-size-base: ${t.typography.scale.base.size};`,
+    `  --font-size-lg:   ${t.typography.scale.lg.size};`,
+    `  --font-size-xl:   ${t.typography.scale.xl.size};`,
+    `  --font-size-2xl:  ${t.typography.scale['2xl'].size};`,
+    `  --font-size-3xl:  ${t.typography.scale['3xl'].size};`,
+    `  --font-size-4xl:  ${t.typography.scale['4xl'].size};`,
+    `  --space-xs:  ${t.spacing.scale.xs};`,
+    `  --space-sm:  ${t.spacing.scale.sm};`,
+    `  --space-md:  ${t.spacing.scale.md};`,
+    `  --space-lg:  ${t.spacing.scale.lg};`,
+    `  --space-xl:  ${t.spacing.scale.xl};`,
+    `  --space-2xl: ${t.spacing.scale['2xl']};`,
+    `  --space-3xl: ${t.spacing.scale['3xl']};`,
   ];
 
   // Physical spacing — precise named tokens
@@ -86,8 +114,6 @@ function buildCSSVars(t: DesignTokens): string {
     for (const [name, val] of Object.entries(t.spacingSystem.named)) {
       lines.push(`  --space-${name}: ${val};`);
     }
-  } else {
-    lines.push(`  --spacing-base: ${t.spacing.base}${t.spacing.scale};`);
   }
 
   // Physical typography — named font-size tokens
@@ -108,20 +134,51 @@ function buildCSSVars(t: DesignTokens): string {
 function buildTailwind(t: DesignTokens): string {
   const ext: Record<string, unknown> = {
     colors: {
-      primary: t.colors.brand.primary, secondary: t.colors.brand.secondary,
-      background: t.colors.background.main, card: t.colors.background.card,
-      muted: t.colors.text.muted, border: t.colors.border,
+      primary:    t.color.brand.primary,
+      secondary:  t.color.brand.secondary,
+      accent:     t.color.brand.accent,
+      background: t.color.background.page,
+      surface:    t.color.background.surface,
+      text:       t.color.text.primary,
+      muted:      t.color.text.secondary,
+      border:     t.color.border,
+      success:    t.color.status.success,
+      warning:    t.color.status.warning,
+      error:      t.color.status.error,
     },
-    borderRadius: { sm: t.borderRadius.small, md: t.borderRadius.medium, lg: t.borderRadius.large },
-    fontFamily: { sans: [t.typography.sans] },
+    borderRadius: {
+      none: t.radius.none,
+      sm:   t.radius.sm,
+      DEFAULT: t.radius.md,
+      lg:   t.radius.lg,
+      xl:   t.radius.xl,
+      full: t.radius.full,
+    },
+    boxShadow: {
+      sm:      t.shadow.sm,
+      DEFAULT: t.shadow.md,
+      lg:      t.shadow.lg,
+      xl:      t.shadow.xl,
+    },
+    fontFamily: {
+      sans:    [t.typography.families.body],
+      heading: [t.typography.families.heading],
+      mono:    [t.typography.families.mono],
+    },
+    spacing: Object.fromEntries(Object.entries(t.spacing.scale)),
+    fontSize: Object.fromEntries(
+      Object.entries(t.typography.scale).map(([k, v]) => [
+        k, [v.size, { lineHeight: v.lineHeight }],
+      ])
+    ),
   };
 
+  // Physical spacing overrides — more precise
   if (t.spacingSystem) {
-    ext.spacing = Object.fromEntries(
-      Object.entries(t.spacingSystem.named).map(([k, v]) => [k, v])
-    );
+    ext.spacing = Object.fromEntries(Object.entries(t.spacingSystem.named));
   }
 
+  // Physical typography overrides
   if (t.typographyScale) {
     ext.fontSize = Object.fromEntries(
       t.typographyScale.steps.map(s => [s.role, [s.px, { lineHeight: s.lineHeight }]])
@@ -165,15 +222,20 @@ const DENSITY_GAP: Record<string, number> = { compact: 0.6, comfortable: 1, spac
 // ── Layout renderers ───────────────────────────────────────────────────────
 
 function NavBar({ tokens, transparent }: { tokens: DesignTokens; transparent?: boolean }) {
-  const { colors: c, typography: t } = tokens;
+  const c = tokens.color;
+  const t = tokens.typography;
+  const navBrand = tokens.skeleton.nav.brand || 'Brand';
+  const navItems = tokens.skeleton.nav.items.length > 0
+    ? tokens.skeleton.nav.items.slice(0, 3)
+    : ['Product', 'Docs', 'Pricing'];
   const bg = transparent ? 'transparent' : c.brand.primary;
-  const fg = transparent ? c.text.base : '#fff';
+  const fg = transparent ? c.text.primary : '#fff';
   return (
     <nav style={{ background: bg, display:'flex', alignItems:'center', justifyContent:'space-between', padding:'8px 16px', borderBottom: transparent ? `1px solid ${c.border}` : 'none', flexShrink:0 }}>
-      <span style={{ fontWeight: t.headingWeight, color: fg, fontSize:13, fontFamily: t.sans }}>Brand</span>
+      <span style={{ fontWeight: t.weights.bold, color: fg, fontSize:13, fontFamily: t.families.body }}>{navBrand}</span>
       <div style={{ display:'flex', gap:12 }}>
-        {['Product','Docs','Pricing'].map(l => (
-          <span key={l} style={{ color: transparent ? c.text.muted : 'rgba(255,255,255,.8)', fontSize:10, fontFamily: t.sans }}>{l}</span>
+        {navItems.map(l => (
+          <span key={l} style={{ color: transparent ? c.text.secondary : 'rgba(255,255,255,.8)', fontSize:10, fontFamily: t.families.body }}>{l}</span>
         ))}
       </div>
     </nav>
@@ -182,24 +244,25 @@ function NavBar({ tokens, transparent }: { tokens: DesignTokens; transparent?: b
 
 /** hero-centric — oversized centered headline, prominent CTA */
 function HeroCentricLayout({ tokens, scale }: { tokens: DesignTokens; scale: number }) {
-  const { colors: c, borderRadius: r, typography: t, components, layoutStructure } = tokens;
-  const gap = DENSITY_GAP[layoutStructure.density] ?? 1;
+  const c = tokens.color;
+  const r = tokens.radius;
+  const t = tokens.typography;
+  const sa = tokens.siteArchitecture;
+  const gap = DENSITY_GAP[sa.density] ?? 1;
   const btnStyle: React.CSSProperties = {
     background: c.brand.primary, color: '#fff', border: 'none',
-    borderRadius: r.small, cursor: 'default', fontFamily: t.sans,
-    fontWeight: t.headingWeight,
-    padding: `${components.button.paddingY} ${components.button.paddingX}`,
-    letterSpacing: components.button.letterSpacing,
-    fontSize: mockSize(tokens.typeScale.label, scale),
+    borderRadius: r.sm, cursor: 'default', fontFamily: t.families.body,
+    fontWeight: t.weights.bold, padding: '6px 14px', letterSpacing: 'normal',
+    fontSize: mockSize(t.scale.xs.size, scale),
   };
   return (
-    <div style={{ display:'flex', flexDirection:'column', height:'100%', background: c.background.main, fontFamily: t.sans, color: c.text.base }}>
-      <NavBar tokens={tokens} transparent={layoutStructure.navStyle === 'transparent'} />
+    <div style={{ display:'flex', flexDirection:'column', height:'100%', background: c.background.page, fontFamily: t.families.body, color: c.text.primary }}>
+      <NavBar tokens={tokens} transparent={sa.layout.navPosition === 'floating'} />
       <div style={{ flex:1, display:'flex', flexDirection:'column', alignItems:'center', justifyContent:'center', padding:`${8 * gap}px 20px`, textAlign:'center', gap: `${10 * gap}px` }}>
-        <h1 style={{ fontWeight: t.headingWeight, fontSize: mockSize(tokens.typeScale.hero, scale), lineHeight: tokens.typeScale.lineHeight, color: c.text.base, margin:0 }}>
-          Beautiful<br/>by Default
+        <h1 style={{ fontWeight: t.weights.bold, fontSize: mockSize(t.scale['4xl'].size, scale), lineHeight: t.scale['4xl'].lineHeight, color: c.text.primary, margin:0 }}>
+          {tokens.skeleton.hero.headline || 'Beautiful\nby Default'}
         </h1>
-        <p style={{ color: c.text.muted, fontSize: mockSize(tokens.typeScale.body, scale * 0.9), margin:0, maxWidth:220 }}>
+        <p style={{ color: c.text.secondary, fontSize: mockSize(t.scale.base.size, scale * 0.9), margin:0, maxWidth:220 }}>
           Extracted straight from the source. Zero guesswork.
         </p>
         <div style={{ display:'flex', gap:8 }}>
@@ -211,25 +274,28 @@ function HeroCentricLayout({ tokens, scale }: { tokens: DesignTokens; scale: num
   );
 }
 
-/** card-grid — dense card feed, minimal nav (Pinterest / Airbnb feel) */
+/** card-grid — dense card feed, minimal nav (e-commerce / social feed feel) */
 function CardGridLayout({ tokens, scale }: { tokens: DesignTokens; scale: number }) {
-  const { colors: c, borderRadius: r, typography: t, components, layoutStructure } = tokens;
-  const gap = DENSITY_GAP[layoutStructure.density] ?? 1;
+  const c = tokens.color;
+  const r = tokens.radius;
+  const t = tokens.typography;
+  const sa = tokens.siteArchitecture;
+  const gap = DENSITY_GAP[sa.density] ?? 1;
   const gapPx = `${Math.round(6 * gap)}px`;
-  const cols = layoutStructure.density === 'compact' ? 4 : 3;
+  const cols = sa.density === 'compact' ? 4 : 3;
   const cards = Array.from({ length: cols * 2 }, (_, i) => i);
   return (
-    <div style={{ display:'flex', flexDirection:'column', height:'100%', background: c.background.main, fontFamily: t.sans }}>
+    <div style={{ display:'flex', flexDirection:'column', height:'100%', background: c.background.page, fontFamily: t.families.body }}>
       <NavBar tokens={tokens} transparent />
       <div style={{ flex:1, overflow:'hidden', padding:`${gapPx}`, display:'grid', gridTemplateColumns:`repeat(${cols}, 1fr)`, gap: gapPx, alignContent:'start' }}>
         {cards.map(i => (
-          <div key={i} style={{ background: c.background.card, borderRadius: r.medium, boxShadow: components.card.shadow, overflow:'hidden' }}>
+          <div key={i} style={{ background: c.background.surface, borderRadius: r.md, boxShadow: tokens.shadow.md, overflow:'hidden' }}>
             <div style={{ height: i % 3 === 0 ? 42 : 30, background: i % 2 === 0 ? c.brand.primary : c.brand.secondary, opacity: 0.35 + (i % 3) * 0.15 }} />
             <div style={{ padding:'5px 6px' }}>
-              <p style={{ margin:0, fontSize: mockSize(tokens.typeScale.label, scale), fontWeight: t.headingWeight, color: c.text.base, overflow:'hidden', whiteSpace:'nowrap', textOverflow:'ellipsis' }}>
+              <p style={{ margin:0, fontSize: mockSize(t.scale.xs.size, scale), fontWeight: t.weights.bold, color: c.text.primary, overflow:'hidden', whiteSpace:'nowrap', textOverflow:'ellipsis' }}>
                 {['Card title','Feature','Item name','Product'][i % 4]}
               </p>
-              <p style={{ margin:'2px 0 0', fontSize: mockSize(tokens.typeScale.label, scale * 0.82), color: c.text.muted }}>
+              <p style={{ margin:'2px 0 0', fontSize: mockSize(t.scale.xs.size, scale * 0.82), color: c.text.secondary }}>
                 {['$29','★ 4.8','New','Free'][i % 4]}
               </p>
             </div>
@@ -240,32 +306,35 @@ function CardGridLayout({ tokens, scale }: { tokens: DesignTokens; scale: number
   );
 }
 
-/** editorial — wide headline + paragraph columns (Medium / Substack feel) */
+/** editorial — wide headline + paragraph columns (content-site / docs feel) */
 function EditorialLayout({ tokens, scale }: { tokens: DesignTokens; scale: number }) {
-  const { colors: c, borderRadius: r, typography: t, components, layoutStructure } = tokens;
-  const gap = DENSITY_GAP[layoutStructure.density] ?? 1;
+  const c = tokens.color;
+  const r = tokens.radius;
+  const t = tokens.typography;
+  const sa = tokens.siteArchitecture;
+  const gap = DENSITY_GAP[sa.density] ?? 1;
   return (
-    <div style={{ display:'flex', flexDirection:'column', height:'100%', background: c.background.main, fontFamily: t.sans, color: c.text.base }}>
+    <div style={{ display:'flex', flexDirection:'column', height:'100%', background: c.background.page, fontFamily: t.families.body, color: c.text.primary }}>
       <NavBar tokens={tokens} transparent />
       <div style={{ flex:1, overflow:'hidden', padding:`${Math.round(10 * gap)}px 20px`, display:'flex', flexDirection:'column', gap:`${Math.round(8 * gap)}px` }}>
         <div style={{ display:'flex', gap:6, alignItems:'center' }}>
           <div style={{ width:16, height:16, borderRadius:'50%', background: c.brand.primary, opacity:.6, flexShrink:0 }} />
-          <span style={{ fontSize: mockSize(tokens.typeScale.label, scale), color: c.text.muted }}>Author · 5 min read</span>
+          <span style={{ fontSize: mockSize(t.scale.xs.size, scale), color: c.text.secondary }}>Author · 5 min read</span>
         </div>
-        <h1 style={{ margin:0, fontWeight: t.headingWeight, fontSize: mockSize(tokens.typeScale.heading, scale), lineHeight: tokens.typeScale.lineHeight, color: c.text.base }}>
-          The new standard for design systems
+        <h1 style={{ margin:0, fontWeight: t.weights.bold, fontSize: mockSize(t.scale['2xl'].size, scale), lineHeight: t.scale['2xl'].lineHeight, color: c.text.primary }}>
+          {tokens.skeleton.hero.headline || 'The new standard for design systems'}
         </h1>
-        <p style={{ margin:0, fontSize: mockSize(tokens.typeScale.body, scale * 0.88), lineHeight: tokens.typeScale.lineHeight, color: c.text.muted }}>
+        <p style={{ margin:0, fontSize: mockSize(t.scale.base.size, scale * 0.88), lineHeight: t.scale.base.lineHeight, color: c.text.secondary }}>
           Every great product starts with a coherent visual language. Extract, iterate, and ship.
         </p>
-        <div style={{ width:'100%', height: Math.round(48 * gap), borderRadius: r.medium, background: c.brand.secondary, opacity:.18 }} />
-        <p style={{ margin:0, fontSize: mockSize(tokens.typeScale.body, scale * 0.88), color: c.text.muted, lineHeight: tokens.typeScale.lineHeight }}>
+        <div style={{ width:'100%', height: Math.round(48 * gap), borderRadius: r.md, background: c.brand.secondary, opacity:.18 }} />
+        <p style={{ margin:0, fontSize: mockSize(t.scale.base.size, scale * 0.88), color: c.text.secondary, lineHeight: t.scale.base.lineHeight }}>
           Consistent spacing, intentional colour, and typographic hierarchy form the bedrock of
-          <span style={{ color: c.brand.primary, fontWeight: t.headingWeight }}> every memorable interface.</span>
+          <span style={{ color: c.brand.primary, fontWeight: t.weights.bold }}> every memorable interface.</span>
         </p>
         <div style={{ display:'flex', gap:6 }}>
           {['Design','Systems','Tokens'].map(tag => (
-            <span key={tag} style={{ padding:`2px 8px`, borderRadius: r.small, border:`1px solid ${c.border}`, fontSize: mockSize(tokens.typeScale.label, scale), color: c.text.muted }}>
+            <span key={tag} style={{ padding:`2px 8px`, borderRadius: r.sm, border:`1px solid ${c.border}`, fontSize: mockSize(t.scale.xs.size, scale), color: c.text.secondary }}>
               {tag}
             </span>
           ))}
@@ -275,34 +344,36 @@ function EditorialLayout({ tokens, scale }: { tokens: DesignTokens; scale: numbe
   );
 }
 
-/** dashboard — sidebar nav + metric cards (Linear / Vercel dashboard feel) */
+/** dashboard — sidebar nav + metric cards (saas-app / dashboard feel) */
 function DashboardLayout({ tokens, scale }: { tokens: DesignTokens; scale: number }) {
-  const { colors: c, borderRadius: r, typography: t, components } = tokens;
+  const c = tokens.color;
+  const r = tokens.radius;
+  const t = tokens.typography;
   const metrics = [['2.4k','Users'],['98%','Uptime'],['14ms','Latency'],['$4.2k','Revenue']];
   return (
-    <div style={{ display:'flex', height:'100%', background: c.background.main, fontFamily: t.sans, color: c.text.base }}>
+    <div style={{ display:'flex', height:'100%', background: c.background.page, fontFamily: t.families.body, color: c.text.primary }}>
       {/* Sidebar */}
-      <div style={{ width:52, background: c.background.card, borderRight:`1px solid ${c.border}`, display:'flex', flexDirection:'column', alignItems:'center', paddingTop:10, gap:8, flexShrink:0 }}>
-        <div style={{ width:22, height:22, borderRadius: r.small, background: c.brand.primary, marginBottom:6 }} />
+      <div style={{ width:52, background: c.background.surface, borderRight:`1px solid ${c.border}`, display:'flex', flexDirection:'column', alignItems:'center', paddingTop:10, gap:8, flexShrink:0 }}>
+        <div style={{ width:22, height:22, borderRadius: r.sm, background: c.brand.primary, marginBottom:6 }} />
         {['⊞','◈','⇿','⊙'].map((icon, i) => (
-          <div key={i} style={{ width:28, height:28, borderRadius: r.small, display:'flex', alignItems:'center', justifyContent:'center', fontSize:11, color: i===0 ? c.brand.primary : c.text.muted, background: i===0 ? `${c.brand.primary}18` : 'transparent' }}>
+          <div key={i} style={{ width:28, height:28, borderRadius: r.sm, display:'flex', alignItems:'center', justifyContent:'center', fontSize:11, color: i===0 ? c.brand.primary : c.text.secondary, background: i===0 ? `${c.brand.primary}18` : 'transparent' }}>
             {icon}
           </div>
         ))}
       </div>
       {/* Main */}
       <div style={{ flex:1, overflow:'hidden', padding:'10px 12px', display:'flex', flexDirection:'column', gap:8 }}>
-        <h2 style={{ margin:0, fontWeight: t.headingWeight, fontSize: mockSize(tokens.typeScale.heading, scale * 0.8), color: c.text.base }}>Overview</h2>
+        <h2 style={{ margin:0, fontWeight: t.weights.bold, fontSize: mockSize(t.scale['2xl'].size, scale * 0.8), color: c.text.primary }}>Overview</h2>
         <div style={{ display:'grid', gridTemplateColumns:'1fr 1fr', gap:6 }}>
           {metrics.map(([val, label]) => (
-            <div key={label} style={{ background: c.background.card, border:`1px solid ${c.border}`, borderRadius: r.medium, padding: components.card.padding, boxShadow: components.card.shadow }}>
-              <p style={{ margin:0, fontWeight: t.headingWeight, fontSize: mockSize(tokens.typeScale.heading, scale * 0.75), color: c.brand.primary }}>{val}</p>
-              <p style={{ margin:'2px 0 0', fontSize: mockSize(tokens.typeScale.label, scale), color: c.text.muted }}>{label}</p>
+            <div key={label} style={{ background: c.background.surface, border:`1px solid ${c.border}`, borderRadius: r.md, padding:'8px 10px', boxShadow: tokens.shadow.sm }}>
+              <p style={{ margin:0, fontWeight: t.weights.bold, fontSize: mockSize(t.scale['2xl'].size, scale * 0.75), color: c.brand.primary }}>{val}</p>
+              <p style={{ margin:'2px 0 0', fontSize: mockSize(t.scale.xs.size, scale), color: c.text.secondary }}>{label}</p>
             </div>
           ))}
         </div>
-        <div style={{ flex:1, background: c.background.card, border:`1px solid ${c.border}`, borderRadius: r.medium, padding:'8px 10px' }}>
-          <p style={{ margin:'0 0 6px', fontSize: mockSize(tokens.typeScale.label, scale), color: c.text.muted, fontWeight: t.headingWeight }}>Activity</p>
+        <div style={{ flex:1, background: c.background.surface, border:`1px solid ${c.border}`, borderRadius: r.md, padding:'8px 10px' }}>
+          <p style={{ margin:'0 0 6px', fontSize: mockSize(t.scale.xs.size, scale), color: c.text.secondary, fontWeight: t.weights.bold }}>Activity</p>
           <div style={{ display:'flex', alignItems:'flex-end', gap:3, height:40 }}>
             {[40,65,45,80,60,90,55,70,85,50,75,95].map((h, i) => (
               <div key={i} style={{ flex:1, height:`${h}%`, borderRadius:'2px 2px 0 0', background: c.brand.primary, opacity: 0.3 + (h / 100) * 0.6 }} />
@@ -316,42 +387,44 @@ function DashboardLayout({ tokens, scale }: { tokens: DesignTokens; scale: numbe
 
 /** landing — split hero (text left / visual right) + feature row */
 function LandingLayout({ tokens, scale }: { tokens: DesignTokens; scale: number }) {
-  const { colors: c, borderRadius: r, typography: t, components, layoutStructure } = tokens;
-  const gap = DENSITY_GAP[layoutStructure.density] ?? 1;
+  const c = tokens.color;
+  const r = tokens.radius;
+  const t = tokens.typography;
+  const sa = tokens.siteArchitecture;
+  const gap = DENSITY_GAP[sa.density] ?? 1;
   const btnStyle: React.CSSProperties = {
-    background: c.brand.primary, color: '#fff', border: 'none', borderRadius: r.small,
-    cursor: 'default', fontFamily: t.sans, fontWeight: t.headingWeight,
-    padding: `${components.button.paddingY} ${components.button.paddingX}`,
-    letterSpacing: components.button.letterSpacing,
-    fontSize: mockSize(tokens.typeScale.label, scale),
+    background: c.brand.primary, color: '#fff', border: 'none', borderRadius: r.sm,
+    cursor: 'default', fontFamily: t.families.body, fontWeight: t.weights.bold,
+    padding: '6px 14px', letterSpacing: 'normal',
+    fontSize: mockSize(t.scale.xs.size, scale),
   };
   return (
-    <div style={{ display:'flex', flexDirection:'column', height:'100%', background: c.background.main, fontFamily: t.sans, color: c.text.base }}>
-      <NavBar tokens={tokens} transparent={layoutStructure.navStyle === 'transparent'} />
+    <div style={{ display:'flex', flexDirection:'column', height:'100%', background: c.background.page, fontFamily: t.families.body, color: c.text.primary }}>
+      <NavBar tokens={tokens} transparent={sa.layout.navPosition === 'floating'} />
       {/* Split hero */}
       <div style={{ display:'flex', flex:1, overflow:'hidden' }}>
         <div style={{ flex:1, display:'flex', flexDirection:'column', justifyContent:'center', padding:`${Math.round(10 * gap)}px 16px`, gap:`${Math.round(6 * gap)}px` }}>
-          <h1 style={{ margin:0, fontWeight: t.headingWeight, fontSize: mockSize(tokens.typeScale.hero, scale), lineHeight: tokens.typeScale.lineHeight, color: c.text.base }}>
-            Ship faster,<br/>look better.
+          <h1 style={{ margin:0, fontWeight: t.weights.bold, fontSize: mockSize(t.scale['4xl'].size, scale), lineHeight: t.scale['4xl'].lineHeight, color: c.text.primary }}>
+            {tokens.skeleton.hero.headline || 'Ship faster,\nlook better.'}
           </h1>
-          <p style={{ margin:0, fontSize: mockSize(tokens.typeScale.body, scale * 0.85), color: c.text.muted, lineHeight:1.5 }}>
+          <p style={{ margin:0, fontSize: mockSize(t.scale.base.size, scale * 0.85), color: c.text.secondary, lineHeight:1.5 }}>
             AI-extracted design tokens, ready to drop into your codebase.
           </p>
           <div style={{ display:'flex', gap:6 }}>
             <button style={btnStyle}>Start free</button>
-            <button style={{ ...btnStyle, background:'transparent', color: c.text.base, border:`1px solid ${c.border}` }}>Watch demo</button>
+            <button style={{ ...btnStyle, background:'transparent', color: c.text.primary, border:`1px solid ${c.border}` }}>Watch demo</button>
           </div>
         </div>
-        <div style={{ width:90, margin:'10px 10px 10px 0', borderRadius: r.large, background:`linear-gradient(135deg, ${c.brand.primary}40, ${c.brand.secondary}30)`, border:`1px solid ${c.border}`, display:'flex', alignItems:'center', justifyContent:'center', fontSize:20, flexShrink:0 }}>
+        <div style={{ width:90, margin:'10px 10px 10px 0', borderRadius: r.lg, background:`linear-gradient(135deg, ${c.brand.primary}40, ${c.brand.secondary}30)`, border:`1px solid ${c.border}`, display:'flex', alignItems:'center', justifyContent:'center', fontSize:20, flexShrink:0 }}>
           ◈
         </div>
       </div>
       {/* Feature row */}
       <div style={{ display:'grid', gridTemplateColumns:'repeat(3,1fr)', gap:6, padding:`6px 10px ${Math.round(8 * gap)}px` }}>
         {[['◈','Tokens'],['⊡','Preview'],['⇿','Compare']].map(([icon, label]) => (
-          <div key={label} style={{ background: c.background.card, border:`1px solid ${c.border}`, borderRadius: r.medium, padding: components.card.padding, boxShadow: components.card.shadow, display:'flex', alignItems:'center', gap:6 }}>
+          <div key={label} style={{ background: c.background.surface, border:`1px solid ${c.border}`, borderRadius: r.md, padding:'8px 10px', boxShadow: tokens.shadow.sm, display:'flex', alignItems:'center', gap:6 }}>
             <span style={{ fontSize:12, color: c.brand.primary }}>{icon}</span>
-            <span style={{ fontSize: mockSize(tokens.typeScale.label, scale), fontWeight: t.headingWeight, color: c.text.base }}>{label}</span>
+            <span style={{ fontSize: mockSize(t.scale.xs.size, scale), fontWeight: t.weights.bold, color: c.text.primary }}>{label}</span>
           </div>
         ))}
       </div>
@@ -359,22 +432,21 @@ function LandingLayout({ tokens, scale }: { tokens: DesignTokens; scale: number 
   );
 }
 
-// ── MockPage — picks renderer based on layoutStructure.pattern ────────────
+// ── MockPage — picks renderer based on siteArchitecture.paradigm ──────────
 function MockPage({ tokens }: { tokens: DesignTokens }) {
-  const heroPx = parsePx(tokens.typeScale.hero);
+  const heroPx = parsePx(tokens.typography.scale['4xl'].size);
   // Scale so that the largest headline fits comfortably in ~50px within the 260px mock
   const scale = Math.min(50 / heroPx, 0.55);
 
-  const pattern = tokens.layoutStructure?.pattern ?? 'landing';
+  const paradigm = tokens.siteArchitecture?.paradigm ?? 'landing';
   const props = { tokens, scale };
 
   return (
     <div style={{ height:'100%', overflow:'hidden' }}>
-      {pattern === 'hero-centric' && <HeroCentricLayout {...props} />}
-      {pattern === 'card-grid'    && <CardGridLayout    {...props} />}
-      {pattern === 'editorial'    && <EditorialLayout   {...props} />}
-      {pattern === 'dashboard'    && <DashboardLayout   {...props} />}
-      {pattern === 'landing'      && <LandingLayout     {...props} />}
+      {(paradigm === 'landing' || paradigm === 'portfolio') && <LandingLayout {...props} />}
+      {(paradigm === 'e-commerce' || paradigm === 'social-feed') && <CardGridLayout {...props} />}
+      {(paradigm === 'content-site' || paradigm === 'docs') && <EditorialLayout {...props} />}
+      {(paradigm === 'dashboard' || paradigm === 'saas-app') && <DashboardLayout {...props} />}
     </div>
   );
 }
@@ -387,7 +459,10 @@ const cellLabelStyle: React.CSSProperties = {
 
 // ── BentoGrid (palette tab) ───────────────────────────────────────────────
 function BentoGrid({ tokens, siteUrl }: { tokens: DesignTokens; siteUrl?: string }) {
-  const { colors: c, spacing, borderRadius: r, typography: t } = tokens;
+  const c = tokens.color;
+  const t = tokens.typography;
+  const r = tokens.radius;
+  const spacing = tokens.spacing;
   const [exportFeedback, setExportFeedback] = useState<string | null>(null);
 
   function doExport(key: string, fn: () => void) {
@@ -399,26 +474,27 @@ function BentoGrid({ tokens, siteUrl }: { tokens: DesignTokens; siteUrl?: string
   const swatches = [
     { label: 'Brand / Primary',   value: c.brand.primary },
     { label: 'Brand / Secondary', value: c.brand.secondary },
-    { label: 'BG / Main',         value: c.background.main },
-    { label: 'BG / Card',         value: c.background.card },
-    { label: 'Text / Base',       value: c.text.base },
-    { label: 'Text / Muted',      value: c.text.muted },
+    { label: 'Brand / Accent',    value: c.brand.accent },
+    { label: 'BG / Page',         value: c.background.page },
+    { label: 'BG / Surface',      value: c.background.surface },
+    { label: 'Text / Primary',    value: c.text.primary },
+    { label: 'Text / Secondary',  value: c.text.secondary },
     { label: 'Border',            value: c.border },
   ];
 
   return (
     <div className="vi-bento">
 
-      {/* ── Cell 1: Color System (7 cols) ── */}
+      {/* ── Cell 1: Color System ── */}
       <div className="vi-cell-palette vi-glow-card">
         <div className="vi-glow-card-inner" style={{ padding:'20px 22px' }}>
           <p style={cellLabelStyle}>Color System</p>
           <div style={{ display:'flex', gap:8, flexWrap:'wrap' }}>
             {swatches.map(s => <ColorSwatch key={s.label} {...s} />)}
           </div>
-          {tokens.layoutVibe && (
+          {tokens.siteArchitecture.motif && (
             <div style={{ marginTop:12, display:'flex', gap:5, flexWrap:'wrap' }}>
-              {tokens.layoutVibe.split(',').map(tag => tag.trim()).filter(Boolean).map(tag => (
+              {tokens.siteArchitecture.motif.split(',').map(tag => tag.trim()).filter(Boolean).map(tag => (
                 <span key={tag} style={{ padding:'2px 8px', borderRadius:6, background:'rgba(167,139,250,.08)', border:'1px solid rgba(167,139,250,.2)', fontSize:10, fontFamily:monoFont, color:'#c4b5fd' }}>
                   {tag}
                 </span>
@@ -428,7 +504,7 @@ function BentoGrid({ tokens, siteUrl }: { tokens: DesignTokens; siteUrl?: string
         </div>
       </div>
 
-      {/* ── Cell 2: Typography (5 cols) ── */}
+      {/* ── Cell 2: Typography ── */}
       <div className="vi-cell-typo vi-glow-card">
         <div className="vi-glow-card-inner" style={{ padding:'20px 22px', display:'flex', flexDirection:'column' }}>
           <div style={{ display:'flex', alignItems:'center', justifyContent:'space-between', marginBottom:14 }}>
@@ -445,11 +521,10 @@ function BentoGrid({ tokens, siteUrl }: { tokens: DesignTokens; siteUrl?: string
             <div style={{ flex:1, display:'flex', flexDirection:'column', gap:0, overflowY:'auto' }}>
               {[...tokens.typographyScale.steps].reverse().map(step => {
                 const rawPx = parseInt(step.px);
-                // Cap display size so every row fits the cell
                 const displayPx = Math.min(rawPx, 26);
                 return (
                   <div key={step.px} style={{ display:'flex', alignItems:'center', gap:8, padding:'4px 0', borderBottom:'1px solid rgba(255,255,255,.045)' }}>
-                    <span style={{ fontFamily: t.sans, fontSize: displayPx, fontWeight: step.weight, lineHeight: step.lineHeight, color:'rgba(255,255,255,.88)', minWidth:32, flexShrink:0 }}>
+                    <span style={{ fontFamily: t.families.body, fontSize: displayPx, fontWeight: step.weight, lineHeight: step.lineHeight, color:'rgba(255,255,255,.88)', minWidth:32, flexShrink:0 }}>
                       Aa
                     </span>
                     <div style={{ display:'flex', gap:4, marginLeft:'auto', alignItems:'center', flexShrink:0 }}>
@@ -466,7 +541,6 @@ function BentoGrid({ tokens, siteUrl }: { tokens: DesignTokens; siteUrl?: string
                   </div>
                 );
               })}
-              {/* Font families */}
               {tokens.typographyScale.families.length > 0 && (
                 <div style={{ display:'flex', gap:5, flexWrap:'wrap', paddingTop:8 }}>
                   {tokens.typographyScale.families.map(f => (
@@ -485,20 +559,20 @@ function BentoGrid({ tokens, siteUrl }: { tokens: DesignTokens; siteUrl?: string
                 Sans-serif stack optimised for high-DPI screens.
               </p>
               <div style={{ display:'flex', gap:6, flexWrap:'wrap', marginTop:'auto', paddingTop:8 }}>
-                <span style={{ padding:'3px 9px', border:'1px solid rgba(124,109,240,.3)', borderRadius:6, fontSize:10, fontFamily:monoFont, color:'#a78bfa' }}>{t.sans.split(',')[0].trim()}</span>
-                <span style={{ padding:'3px 9px', border:'1px solid rgba(255,255,255,.065)', borderRadius:6, fontSize:10, fontFamily:monoFont, color:'rgba(255,255,255,.35)' }}>wt: {t.headingWeight}</span>
+                <span style={{ padding:'3px 9px', border:'1px solid rgba(124,109,240,.3)', borderRadius:6, fontSize:10, fontFamily:monoFont, color:'#a78bfa' }}>{t.families.body.split(',')[0].trim()}</span>
+                <span style={{ padding:'3px 9px', border:'1px solid rgba(255,255,255,.065)', borderRadius:6, fontSize:10, fontFamily:monoFont, color:'rgba(255,255,255,.35)' }}>wt: {t.weights.bold}</span>
               </div>
             </div>
           )}
         </div>
       </div>
 
-      {/* ── Cell 3: Border Radius (4 cols) ── */}
+      {/* ── Cell 3: Border Radius ── */}
       <div className="vi-cell-radius vi-glow-card">
         <div className="vi-glow-card-inner" style={{ padding:'20px 22px' }}>
           <p style={cellLabelStyle}>Border Radius</p>
           <div style={{ display:'flex', alignItems:'flex-end', gap:14 }}>
-            {[{ size: r.small, label:'sm' }, { size: r.medium, label:'md' }, { size: r.large, label:'lg' }].map(({ size, label }) => (
+            {[{ size: r.sm, label:'sm' }, { size: r.md, label:'md' }, { size: r.lg, label:'lg' }].map(({ size, label }) => (
               <div key={label} style={{ display:'flex', flexDirection:'column', alignItems:'center', gap:8 }}>
                 <div style={{ background:'linear-gradient(135deg, rgba(99,102,241,.25), rgba(167,139,250,.15))', border:'1px solid rgba(99,102,241,.3)', borderRadius: size, width: label==='sm'?28:label==='md'?40:54, height: label==='sm'?28:label==='md'?40:54 }} />
                 <span style={{ fontSize:10, fontFamily:monoFont, color:'rgba(255,255,255,.35)' }}>{label} · {size}</span>
@@ -508,7 +582,7 @@ function BentoGrid({ tokens, siteUrl }: { tokens: DesignTokens; siteUrl?: string
         </div>
       </div>
 
-      {/* ── Cell 4: Spacing Scale (4 cols) ── */}
+      {/* ── Cell 4: Spacing Scale ── */}
       <div className="vi-cell-spacing vi-glow-card">
         <div className="vi-glow-card-inner" style={{ padding:'20px 22px' }}>
           <div style={{ display:'flex', alignItems:'center', justifyContent:'space-between', marginBottom:14 }}>
@@ -524,7 +598,6 @@ function BentoGrid({ tokens, siteUrl }: { tokens: DesignTokens; siteUrl?: string
             /* ── Physical step scale ──────────────────────────────────── */
             (() => {
               const sys = tokens.spacingSystem!;
-              // Reverse-map: "8px" → "sm"
               const nameMap: Record<string, string> = {};
               for (const [k, v] of Object.entries(sys.named)) nameMap[v] = k;
               const maxPx = Math.max(...sys.steps.map(s => parseInt(s)), 1);
@@ -550,12 +623,12 @@ function BentoGrid({ tokens, siteUrl }: { tokens: DesignTokens; siteUrl?: string
               );
             })()
           ) : (
-            /* ── Fallback: computed multiplier bars ───────────────────── */
+            /* ── Fallback: named scale bars from token values ─────────── */
             <div style={{ display:'flex', flexDirection:'column', gap:8 }}>
-              {[1, 2, 4, 8].map(mult => (
-                <div key={mult} style={{ display:'flex', alignItems:'center', gap:10 }}>
-                  <div style={{ height:5, borderRadius:3, background:'linear-gradient(90deg, #7c6df0, #a78bfa)', opacity:0.7, width:`${mult * 16}px`, minWidth:16, maxWidth:128, flexShrink:0 }} />
-                  <span style={{ fontSize:10, fontFamily:monoFont, color:'rgba(255,255,255,.35)', whiteSpace:'nowrap' }}>{spacing.base * mult}{spacing.scale} · {mult}×</span>
+              {(['xs','sm','md','lg'] as const).map(key => (
+                <div key={key} style={{ display:'flex', alignItems:'center', gap:10 }}>
+                  <div style={{ height:5, borderRadius:3, background:'linear-gradient(90deg, #7c6df0, #a78bfa)', opacity:0.7, width: parseInt(spacing.scale[key]) * 1.2, minWidth:6, maxWidth:128, flexShrink:0 }} />
+                  <span style={{ fontSize:10, fontFamily:monoFont, color:'rgba(255,255,255,.35)', whiteSpace:'nowrap' }}>{spacing.scale[key]} · {key}</span>
                 </div>
               ))}
             </div>
@@ -563,26 +636,27 @@ function BentoGrid({ tokens, siteUrl }: { tokens: DesignTokens; siteUrl?: string
         </div>
       </div>
 
-      {/* ── Cell 5: Raw Tokens (4 cols) ── */}
+      {/* ── Cell 5: Raw Tokens ── */}
       <div className="vi-cell-tokens vi-glow-card">
         <div className="vi-glow-card-inner" style={{ padding:'20px 22px' }}>
           <p style={cellLabelStyle}>Raw Tokens</p>
           <div style={{ display:'flex', flexDirection:'column', gap:0 }}>
             {[
-              ['colors.brand.primary',     c.brand.primary],
-              ['spacing.base',             `${spacing.base} ${spacing.scale}`],
-              ['radius.medium',            r.medium],
-              ['typo.headingWeight',       t.headingWeight],
-              ['typeScale.hero',           tokens.typeScale.hero],
-              ['layout.pattern',           tokens.layoutStructure.pattern],
-              ['layout.density',           tokens.layoutStructure.density],
+              ['color.brand.primary',         c.brand.primary],
+              ['spacing.baseUnit',             `${spacing.baseUnit}px`],
+              ['radius.md',                    r.md],
+              ['typography.weights.bold',      t.weights.bold],
+              ['typography.4xl',               t.scale['4xl'].size],
+              ['architecture.paradigm',        tokens.siteArchitecture.paradigm],
+              ['architecture.density',         tokens.siteArchitecture.density],
+              ['skeleton.nav.brand',           tokens.skeleton.nav.brand || '—'],
+              ['skeleton.hero.headline',       (tokens.skeleton.hero.headline || '—').slice(0, 22)],
               ...(tokens.spacingSystem ? [
-                ['spacing.baseUnit',       `${tokens.spacingSystem.baseUnit}px`],
-                ['spacing.steps',          `${tokens.spacingSystem.steps.length} steps`],
+                ['spacing.steps',              `${tokens.spacingSystem.steps.length} steps`],
               ] : []),
               ...(tokens.typographyScale ? [
-                ['typo.baseSize',          tokens.typographyScale.baseSize],
-                ['typo.families',          tokens.typographyScale.families.join(', ') || '—'],
+                ['typo.baseSize',              tokens.typographyScale.baseSize],
+                ['typo.families',              tokens.typographyScale.families.join(', ') || '—'],
               ] : []),
             ].map(([key, val]) => (
               <div key={key} style={{ display:'flex', justifyContent:'space-between', alignItems:'center', padding:'6px 0', borderBottom:'1px solid rgba(255,255,255,.065)' }}>
@@ -638,12 +712,14 @@ function BentoGrid({ tokens, siteUrl }: { tokens: DesignTokens; siteUrl?: string
 
 // ── ComponentPreview tab ──────────────────────────────────────────────────
 function ComponentPreview({ tokens }: { tokens: DesignTokens }) {
-  const { colors: c, borderRadius: r, typography: t, components } = tokens;
+  const c = tokens.color;
+  const r = tokens.radius;
+  const t = tokens.typography;
   const btnBase: React.CSSProperties = {
-    borderRadius: r.small,
-    padding: `${components.button.paddingY} ${components.button.paddingX}`,
-    letterSpacing: components.button.letterSpacing,
-    fontFamily: t.sans, fontSize:13, cursor:'default', border:'none',
+    borderRadius: r.sm,
+    padding: `8px 16px`,
+    letterSpacing: 'normal',
+    fontFamily: t.families.body, fontSize:13, cursor:'default', border:'none',
   };
 
   return (
@@ -653,21 +729,21 @@ function ComponentPreview({ tokens }: { tokens: DesignTokens }) {
           title: 'Buttons',
           content: (
             <div style={{ display:'flex', flexWrap:'wrap', gap:10 }}>
-              <button style={{ ...btnBase, background: c.brand.primary,   color:'#fff',           fontWeight: t.headingWeight }}>Primary</button>
-              <button style={{ ...btnBase, background: c.brand.secondary, color:'#fff'                                       }}>Secondary</button>
-              <button style={{ ...btnBase, background:'transparent',      color: c.brand.primary,  border:`1.5px solid ${c.brand.primary}` }}>Outline</button>
-              <button style={{ ...btnBase, background:'transparent',      color: c.text.muted,     border:`1px solid ${c.border}` }}>Ghost</button>
+              <button style={{ ...btnBase, background: c.brand.primary,   color:'#fff',          fontWeight: t.weights.bold }}>Primary</button>
+              <button style={{ ...btnBase, background: c.brand.secondary, color:'#fff'                                      }}>Secondary</button>
+              <button style={{ ...btnBase, background:'transparent',      color: c.brand.primary, border:`1.5px solid ${c.brand.primary}` }}>Outline</button>
+              <button style={{ ...btnBase, background:'transparent',      color: c.text.secondary, border:`1px solid ${c.border}` }}>Ghost</button>
             </div>
           ),
         },
         {
           title: 'Card',
           content: (
-            <div style={{ background: c.background.card, border:`1px solid ${c.border}`, borderRadius: r.medium, padding: tokens.components.card.padding, boxShadow: tokens.components.card.shadow, fontFamily: t.sans, maxWidth:300 }}>
-              <div style={{ width:'100%', height:64, borderRadius: r.small, background: c.brand.primary, opacity:.15, marginBottom:12 }} />
-              <h3 style={{ fontWeight: t.headingWeight, color: c.text.base, fontSize:14, marginBottom:4 }}>Card Title</h3>
-              <p style={{ color: c.text.muted, fontSize:12, lineHeight: tokens.typeScale.lineHeight, marginBottom:12 }}>Body text showing colour, font stack, and line-height rhythm.</p>
-              <button style={{ ...btnBase, background: c.brand.primary, color:'#fff', fontWeight: t.headingWeight }}>Action</button>
+            <div style={{ background: c.background.surface, border:`1px solid ${c.border}`, borderRadius: r.md, padding:'16px 20px', boxShadow: tokens.shadow.md, fontFamily: t.families.body, maxWidth:300 }}>
+              <div style={{ width:'100%', height:64, borderRadius: r.sm, background: c.brand.primary, opacity:.15, marginBottom:12 }} />
+              <h3 style={{ fontWeight: t.weights.bold, color: c.text.primary, fontSize:14, marginBottom:4 }}>Card Title</h3>
+              <p style={{ color: c.text.secondary, fontSize:12, lineHeight: t.scale.base.lineHeight, marginBottom:12 }}>Body text showing colour, font stack, and line-height rhythm.</p>
+              <button style={{ ...btnBase, background: c.brand.primary, color:'#fff', fontWeight: t.weights.bold }}>Action</button>
             </div>
           ),
         },
@@ -675,8 +751,8 @@ function ComponentPreview({ tokens }: { tokens: DesignTokens }) {
           title: 'Form Inputs',
           content: (
             <div style={{ display:'flex', flexWrap:'wrap', gap:10 }}>
-              <input readOnly placeholder="Placeholder" style={{ border:`1px solid ${c.border}`, borderRadius: r.small, padding:`${tokens.components.button.paddingY} ${tokens.components.button.paddingX}`, background: c.background.card, color: c.text.muted, fontSize:13, fontFamily: t.sans, outline:'none', width:200 }} />
-              <input readOnly defaultValue="Active / focused" style={{ border:`1.5px solid ${c.brand.primary}`, borderRadius: r.small, padding:`${tokens.components.button.paddingY} ${tokens.components.button.paddingX}`, background: c.background.card, color: c.text.base, fontSize:13, fontFamily: t.sans, outline:'none', width:200 }} />
+              <input readOnly placeholder="Placeholder" style={{ border:`1px solid ${c.border}`, borderRadius: r.sm, padding:`8px 14px`, background: c.background.surface, color: c.text.secondary, fontSize:13, fontFamily: t.families.body, outline:'none', width:200 }} />
+              <input readOnly defaultValue="Active / focused" style={{ border:`1.5px solid ${c.brand.primary}`, borderRadius: r.sm, padding:`8px 14px`, background: c.background.surface, color: c.text.primary, fontSize:13, fontFamily: t.families.body, outline:'none', width:200 }} />
             </div>
           ),
         },
@@ -793,6 +869,9 @@ export function ThemePreview({ tokens, siteUrl }: ThemePreviewProps) {
   const domain = useMemo(() => {
     try { return new URL(siteUrl ?? '').hostname; } catch { return null; }
   }, [siteUrl]);
+
+  // suppress unused import warning
+  void cn;
 
   return (
     <div style={{ animation:'fade-up .5s ease both' }}>

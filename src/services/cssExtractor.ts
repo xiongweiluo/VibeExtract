@@ -3,7 +3,7 @@
  * from a live page rather than inferring values from a screenshot.
  *
  * Runs in parallel with the Claude Vision pass and augments the token set
- * with 100 % measured px / rem values.
+ * with 100 % measured px / rem values plus DOM-extracted skeleton hints.
  */
 
 import puppeteer from 'puppeteer';
@@ -49,6 +49,13 @@ export interface TypographyScale {
   families: string[];
   /** Full type scale, sorted smallest → largest */
   steps: TypographyStep[];
+}
+
+export interface SkeletonHints {
+  nav: { brand: string; items: string[] };
+  hero: { present: boolean; headline: string; ctaCount: number };
+  cards: { present: boolean; gridColumns: number; hasShadow: boolean };
+  footer: { present: boolean; columns: number };
 }
 
 // ── Internal helpers ─────────────────────────────────────────────────────────
@@ -191,6 +198,7 @@ interface RawBrowserData {
   fonts:        Array<[string, number]>;
   families:     string[];
   rootFontSize: number;
+  skeleton:     SkeletonHints;
 }
 
 /**
@@ -247,6 +255,91 @@ function browserExtract(): RawBrowserData {
     window.getComputedStyle(document.documentElement).fontSize,
   ) || 16;
 
+  // ── Skeleton extraction ──────────────────────────────────────────────────
+
+  // — Nav brand + items
+  let navBrand = '';
+  const navItemTexts: string[] = [];
+  const navEl = document.querySelector('nav, header nav, [role="navigation"]');
+  if (navEl) {
+    // Brand: first short-text anchor/element at the start of nav
+    const brandCandidates = navEl.querySelectorAll('a, [class*="logo"], [class*="brand"]');
+    for (const el of Array.from(brandCandidates).slice(0, 5)) {
+      const text = (el.textContent ?? '').trim().replace(/\s+/g, ' ');
+      if (text.length > 1 && text.length < 40) { navBrand = text; break; }
+    }
+    // Nav links (exclude brand-like element text already captured)
+    const linkEls = navEl.querySelectorAll('a, button');
+    for (const el of Array.from(linkEls)) {
+      const text = (el.textContent ?? '').trim().replace(/\s+/g, ' ');
+      if (text.length > 1 && text.length < 30 && text !== navBrand) {
+        navItemTexts.push(text);
+        if (navItemTexts.length >= 6) break;
+      }
+    }
+  }
+
+  // — Hero: look for the dominant h1 near the top
+  const h1El = document.querySelector('h1');
+  const heroHeadline = h1El
+    ? (h1El.textContent ?? '').trim().replace(/\s+/g, ' ').slice(0, 80)
+    : '';
+  const heroPresent = !!h1El;
+
+  // Count primary CTA buttons in the top section
+  const heroSection = document.querySelector(
+    '[class*="hero"], section:first-of-type, main > *:first-child, header + *',
+  );
+  let heroCTACount = 0;
+  if (heroSection) {
+    const ctaEls = heroSection.querySelectorAll(
+      'a[class*="btn"], a[class*="button"], a[class*="cta"], button:not([type="submit"])',
+    );
+    heroCTACount = Math.min(ctaEls.length, 5);
+  }
+
+  // — Cards
+  let cardsPresent = false;
+  let gridColumns  = 0;
+  let hasShadow    = false;
+  const cardEls = document.querySelectorAll(
+    '[class*="card"], [class*="Card"], article, [class*="item"]',
+  );
+  if (cardEls.length >= 2) {
+    cardsPresent = true;
+    const parent = cardEls[0].parentElement;
+    if (parent) {
+      const ps = window.getComputedStyle(parent);
+      if (ps.display === 'grid') {
+        gridColumns = ps.gridTemplateColumns.split(' ').filter(Boolean).length;
+      } else if (ps.display === 'flex' && ps.flexWrap !== 'nowrap') {
+        const cardW = (cardEls[0] as HTMLElement).offsetWidth || 0;
+        const parentW = (parent as HTMLElement).offsetWidth || 0;
+        if (cardW > 0) gridColumns = Math.min(Math.floor(parentW / cardW), 6);
+      }
+      if (gridColumns === 0) gridColumns = Math.min(cardEls.length, 4);
+    }
+    const cardStyle = window.getComputedStyle(cardEls[0]);
+    hasShadow = cardStyle.boxShadow !== 'none' && cardStyle.boxShadow !== '';
+  }
+
+  // — Footer
+  const footerEl = document.querySelector('footer, [role="contentinfo"]');
+  let footerPresent = !!footerEl;
+  let footerColumns = 0;
+  if (footerEl) {
+    const fs2 = window.getComputedStyle(footerEl);
+    if (fs2.display === 'grid') {
+      footerColumns = fs2.gridTemplateColumns.split(' ').filter(Boolean).length;
+    } else if (fs2.display === 'flex') {
+      footerColumns = Math.min(Array.from(footerEl.children).length, 6);
+    } else {
+      const colCandidates = footerEl.querySelectorAll(':scope > div, :scope > ul, :scope > section, :scope > nav');
+      footerColumns = Math.min(colCandidates.length, 6);
+    }
+    if (footerColumns === 0) footerColumns = 3;
+  }
+
   return {
     spacing:      Array.from(spacingSet).sort((a, b) => a - b),
     fonts:        Array.from(fontMap.entries())
@@ -254,6 +347,12 @@ function browserExtract(): RawBrowserData {
                     .slice(0, 16),
     families:     Array.from(familySet).slice(0, 5),
     rootFontSize: rootFs,
+    skeleton: {
+      nav:    { brand: navBrand, items: navItemTexts },
+      hero:   { present: heroPresent, headline: heroHeadline, ctaCount: heroCTACount },
+      cards:  { present: cardsPresent, gridColumns, hasShadow },
+      footer: { present: footerPresent, columns: footerColumns },
+    },
   };
 }
 
@@ -262,6 +361,7 @@ function browserExtract(): RawBrowserData {
 export async function extractPhysicalTokens(url: string): Promise<{
   spacingSystem:   SpacingSystem;
   typographyScale: TypographyScale;
+  skeleton:        SkeletonHints;
 }> {
   const browser = await puppeteer.launch({
     headless: true,
@@ -303,6 +403,7 @@ export async function extractPhysicalTokens(url: string): Promise<{
     return {
       spacingSystem:   buildSpacingSystem(raw.spacing),
       typographyScale: buildTypographyScale(raw.fonts, raw.families, raw.rootFontSize),
+      skeleton:        raw.skeleton,
     };
   } finally {
     await browser.close();

@@ -25,8 +25,8 @@ function isValidUrl(value: string): boolean {
   } catch { return false; }
 }
 
-type ExtractStep = 'screenshot' | 'extract' | 'done' | 'error';
-interface ExtractEvent { step: ExtractStep; message?: string; tokens?: DesignTokens; }
+type ExtractStep = 'screenshot' | 'physical' | 'extract' | 'done' | 'error';
+interface ExtractEvent { step: ExtractStep; message?: string; tokens?: DesignTokens; physicalOk?: boolean; }
 
 // ── LoadingOverlay ────────────────────────────────────────────────────────
 
@@ -155,6 +155,7 @@ export default function Home() {
           try { event = JSON.parse(data); } catch { continue; }
 
           if (event.step === 'screenshot') setStepIndex(0);
+          if (event.step === 'physical')   setStepIndex(1);
           if (event.step === 'extract')    setStepIndex(2);
           if (event.step === 'done' && event.tokens) {
             stopTimer();

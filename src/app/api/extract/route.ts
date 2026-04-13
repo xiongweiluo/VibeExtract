@@ -159,10 +159,34 @@ export async function POST(req: NextRequest): Promise<Response> {
       // ── Step 4 ── Merge physical data (Claude took ~4 s; physical is likely done)
       const physical = await physicalPromise;
       if (physical) {
+        const sk = physical.skeleton;
         tokens = {
           ...tokens,
           spacingSystem:   physical.spacingSystem,
           typographyScale: physical.typographyScale,
+          // Physical DOM extraction can read exact text — prefer it over AI inference
+          skeleton: {
+            ...tokens.skeleton,
+            nav: {
+              brand: sk.nav.brand || tokens.skeleton.nav.brand,
+              items: sk.nav.items.length > 0 ? sk.nav.items : tokens.skeleton.nav.items,
+            },
+            hero: {
+              ...tokens.skeleton.hero,
+              headline: sk.hero.headline || tokens.skeleton.hero.headline,
+              present:  sk.hero.present  || tokens.skeleton.hero.present,
+              ctaCount: sk.hero.ctaCount  > 0 ? sk.hero.ctaCount : tokens.skeleton.hero.ctaCount,
+            },
+            cards: {
+              present:     sk.cards.present     || tokens.skeleton.cards.present,
+              gridColumns: sk.cards.gridColumns  > 0 ? sk.cards.gridColumns : tokens.skeleton.cards.gridColumns,
+              hasShadow:   sk.cards.present ? sk.cards.hasShadow : tokens.skeleton.cards.hasShadow,
+            },
+            footer: {
+              present: sk.footer.present || tokens.skeleton.footer.present,
+              columns: sk.footer.columns  > 0 ? sk.footer.columns : tokens.skeleton.footer.columns,
+            },
+          },
         };
       }
 

@@ -9,26 +9,28 @@ const MODEL  = 'claude-haiku-4-5-20251001';
 
 const SYSTEM_PROMPT = `You are an expert UI/UX designer and design systems engineer.
 You receive a DesignTokens JSON object and a natural-language style request.
-Modify the tokens to match the request, then return ONLY the updated JSON — no prose, no markdown fences, no explanations.
+Modify ONLY the mutable visual tokens to match the request, then return ONLY the updated JSON — no prose, no markdown fences, no explanations.
 
-Schema contract (never change structure, only values):
-{
-  "colors": {
-    "brand":      { "primary": "#hex", "secondary": "#hex" },
-    "background": { "main": "#hex",    "card": "#hex" },
-    "text":       { "base": "#hex",    "muted": "#hex" },
-    "border":     "#hex"
-  },
-  "spacing":      { "base": <number>, "scale": "<rem|px>" },
-  "borderRadius": { "small": "<css>", "medium": "<css>", "large": "<css>" },
-  "typography":   { "sans": "<font-family>", "headingWeight": "<css-weight>" }
-}
+Schema contract — never change the structure, only values within these paths:
+  color.brand.{primary,secondary,accent}       — 6-digit HEX
+  color.background.{page,surface,overlay}      — HEX or rgba() for overlay
+  color.text.{primary,secondary,inverse}       — 6-digit HEX
+  color.border                                  — 6-digit HEX
+  color.status.{success,warning,error}         — 6-digit HEX
+  typography.families.{body,heading,mono}      — font-family stack strings
+  typography.weights.{regular,medium,semibold,bold} — CSS weight strings e.g. "400"
+  typography.scale.*.{size,lineHeight}         — px size strings and unitless ratio strings
+  spacing.baseUnit                             — number (4 or 8)
+  spacing.scale.{xs,sm,md,lg,xl,2xl,3xl}      — CSS px strings derived from baseUnit
+  radius.{none,sm,md,lg,xl,full}              — CSS strings; none is always "0", full is always "9999px"
+  shadow.{sm,md,lg,xl}                        — full CSS box-shadow strings
 
 Rules:
-- All colour values must be 6-digit HEX strings starting with #
-- Do not add new keys; do not remove existing keys
+- All colour values must be 6-digit HEX strings starting with # (except overlay which may be rgba())
+- Do not add new keys; do not remove existing keys; preserve the complete token structure
 - Ensure legible contrast between background and text colours
-- Honour the spirit of the style request while keeping the token schema valid`;
+- Honour the spirit of the style request while keeping the token schema valid
+- Do not modify siteArchitecture, skeleton, spacingSystem, or typographyScale fields`;
 
 export async function POST(req: NextRequest): Promise<Response> {
   let body: unknown;
@@ -50,7 +52,7 @@ export async function POST(req: NextRequest): Promise<Response> {
   try {
     const message = await client.messages.create({
       model: MODEL,
-      max_tokens: 1024,
+      max_tokens: 2048,
       system: SYSTEM_PROMPT,
       messages: [
         {

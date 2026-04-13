@@ -3,105 +3,170 @@ import type { DesignTokens } from '../types';
 
 const MODEL = 'claude-haiku-4-5-20251001';
 
-const SYSTEM_PROMPT = `You are a world-class UI architect specialising in design systems.
-When given a screenshot, you extract a precise design token set and return it as a
-single JSON object — no markdown fences, no commentary, no trailing text.
+// ── System prompt ─────────────────────────────────────────────────────────────
 
-The JSON must conform exactly to this TypeScript interface:
+const SYSTEM_PROMPT = `You are a world-class UI architect and design systems engineer.
+Given a screenshot of any website, you extract a complete, schema-conformant design token set
+and return it as a single JSON object — no markdown fences, no commentary, no trailing text.
+
+The JSON must exactly conform to this TypeScript interface:
 
 interface DesignTokens {
-  colors: {
-    brand: { primary: string; secondary: string };   // exact HEX, e.g. "#6366F1"
-    background: { main: string; card: string };
-    text: { base: string; muted: string };
-    border: string;
+  color: {
+    brand:      { primary: string; secondary: string; accent: string };     // exact 6-digit HEX
+    background: { page: string; surface: string; overlay: string };          // overlay may use rgba()
+    text:       { primary: string; secondary: string; inverse: string };
+    border:     string;
+    status:     { success: string; warning: string; error: string };
   };
-  spacing: { base: number; scale: string };          // base unit in px as number, scale unit as string e.g. 4 / "rem"
-  borderRadius: { small: string; medium: string; large: string }; // CSS values e.g. "4px"
   typography: {
-    sans: string;      // font-family stack
-    headingWeight: string; // e.g. "700"
-  };
-  layoutVibe: string;  // 3–5 comma-separated layout personality tags, e.g. "high-density grid, generous whitespace, oversized headings, sticky nav"
-  typeScale: {
-    hero: string;       // largest headline, e.g. "72px"
-    heading: string;    // section heading, e.g. "32px"
-    body: string;       // body copy, e.g. "16px"
-    label: string;      // captions/labels, e.g. "12px"
-    lineHeight: string; // dominant line-height, e.g. "1.2" or "1.6"
-  };
-  layoutStructure: {
-    pattern: 'hero-centric' | 'card-grid' | 'editorial' | 'dashboard' | 'landing';
-    density: 'compact' | 'comfortable' | 'spacious';
-    heroStyle: 'full-bleed' | 'split' | 'centered' | 'none';
-    navStyle: 'sticky' | 'transparent' | 'sidebar' | 'minimal';
-    sectionGap: string;    // e.g. "80px"
-    contentPadding: string; // e.g. "5%" or "48px"
-  };
-  components: {
-    card: {
-      shadow: string;        // full CSS box-shadow value, e.g. "0 2px 8px rgba(0,0,0,0.12)"
-      padding: string;       // CSS shorthand observed on cards/panels, e.g. "16px 20px"
+    families: { body: string; heading: string; mono: string };               // font-family stacks
+    weights:  { regular: string; medium: string; semibold: string; bold: string }; // e.g. "400"
+    scale: {
+      xs:    { size: string; lineHeight: string };   // caption / label
+      sm:    { size: string; lineHeight: string };   // small body
+      base:  { size: string; lineHeight: string };   // default body
+      lg:    { size: string; lineHeight: string };   // lead paragraph
+      xl:    { size: string; lineHeight: string };   // card title
+      "2xl": { size: string; lineHeight: string };   // section heading
+      "3xl": { size: string; lineHeight: string };   // page heading
+      "4xl": { size: string; lineHeight: string };   // hero / display
     };
-    button: {
-      paddingX: string;      // horizontal padding, e.g. "24px"
-      paddingY: string;      // vertical padding, e.g. "10px"
-      letterSpacing: string; // e.g. "0.04em" or "normal"
-    };
+  };
+  spacing: {
+    baseUnit: number;                                                         // 4 or 8 (px)
+    scale: { xs: string; sm: string; md: string; lg: string; xl: string; "2xl": string; "3xl": string };
+  };
+  radius: { none: string; sm: string; md: string; lg: string; xl: string; full: string };
+  shadow: { sm: string; md: string; lg: string; xl: string };                // full CSS box-shadow values
+  siteArchitecture: {
+    paradigm: "landing" | "saas-app" | "e-commerce" | "content-site" | "portfolio" | "docs" | "social-feed" | "dashboard";
+    density:  "compact" | "comfortable" | "spacious";
+    motif:    string;                                                         // 3–5 comma-separated tags
+    layout:   { type: "single-column"|"multi-column"|"sidebar"|"grid"|"masonry"; navPosition: "top-fixed"|"top-static"|"side"|"floating"|"minimal" };
+    visualWeight: { dominant: "typography"|"imagery"|"data"|"color"; hierarchy: "editorial"|"functional"|"expressive" };
+  };
+  skeleton: {
+    hero:   { present: boolean; layout: "centered"|"split"|"full-bleed"|"asymmetric"|"none"; headline: string; ctaCount: number };
+    nav:    { brand: string; items: string[] };
+    cards:  { present: boolean; gridColumns: number; hasShadow: boolean };
+    footer: { present: boolean; columns: number };
   };
 }
 
-Rules:
-- All color values must be exact HEX strings (#RRGGBB).
-- Derive border-radius from buttons, cards, inputs — use small/medium/large tiers.
-- layoutVibe: observe the page's spatial rhythm. Tag things like: "high-density grid",
-  "card-heavy layout", "editorial / magazine", "generous whitespace", "oversized headings",
-  "full-bleed hero", "sidebar navigation", "sticky header", "infinite scroll feed", etc.
-  Use 3–5 tags that best describe what makes this site feel unique.
-- typeScale: read the actual pixel sizes from the visual hierarchy.
-  hero = the largest text block visible (often above the fold); heading = section-level titles;
-  body = paragraph text; label = small UI labels/captions.
-  lineHeight: tight (1.1–1.3) is common in editorial/hero-heavy sites; relaxed (1.5–1.7) in docs/landing pages.
-- layoutStructure.pattern: choose the ONE that best matches the dominant page structure:
-    hero-centric — large above-the-fold hero consumes most of the viewport
-    card-grid    — primary content is a repeating grid/masonry of cards (Pinterest, Airbnb, Product Hunt)
-    editorial    — text-dominant, long-form, magazine-style columns (Medium, NYT, Substack)
-    dashboard    — data-heavy, sidebar nav, metric widgets (Notion, Linear, Vercel dashboard)
-    landing      — marketing page with hero + feature sections + CTA rows
-- layoutStructure.density: compact = tight gutters / high content density; spacious = lots of breathing room.
-- layoutStructure.heroStyle: how the above-the-fold hero is treated spatially.
-- layoutStructure.sectionGap: vertical distance between major content sections.
-- layoutStructure.contentPadding: horizontal page padding / max-width inset.
-- components.card: look at actual card/panel elements — estimate shadow depth (none / soft / dramatic)
-  and the internal padding from visual alignment of content edges.
-- components.button: examine primary CTA buttons — estimate horizontal and vertical padding,
-  and whether text appears tracked/spaced (letter-spacing > 0) or normal.
-- If a value cannot be reliably inferred, make a reasonable design-system guess rather than omitting the key.
-- Output ONLY the raw JSON object. Any character outside the JSON will cause a parse error.`;
+═══════════════════════════════════════════════════════════════════════════
+EXTRACTION RULES
+═══════════════════════════════════════════════════════════════════════════
 
-const USER_PROMPT = `Analyse this UI screenshot carefully.
+COLOR
+  • All values must be 6-digit HEX (#RRGGBB) except background.overlay which may use rgba().
+  • brand.primary    = dominant interactive / CTA colour.
+  • brand.secondary  = supporting accent (may be a tint or complementary hue).
+  • brand.accent     = hover / highlight state colour (may equal secondary if unclear).
+  • status.success/warning/error = semantic feedback colours; if not visible, use
+    the closest on-brand tint or sensible defaults (#10B981 / #F59E0B / #EF4444).
+  • text.inverse     = text colour intended for dark/branded backgrounds (usually white or near-white).
 
-Extract the following and return a single DesignTokens JSON:
+TYPOGRAPHY
+  • families.body    = primary UI font used for body text.
+  • families.heading = heading font (may equal body if one typeface is used throughout).
+  • families.mono    = monospace font or "ui-monospace, monospace" if none detected.
+  • weights          = derive from visual usage; if only bold/normal visible, set
+    regular="400", medium="500", semibold="600", bold="700" as sensible defaults.
+  • scale            = measure from the visual hierarchy. Typical values:
+      xs   ≈ 11–13px / 1.4   (labels, captions)
+      sm   ≈ 13–14px / 1.5
+      base ≈ 15–17px / 1.6   (body copy)
+      lg   ≈ 18–20px / 1.5
+      xl   ≈ 20–24px / 1.4
+      2xl  ≈ 24–32px / 1.3
+      3xl  ≈ 32–48px / 1.2
+      4xl  ≈ 48–80px / 1.1   (hero headline)
+    Prefer px values. lineHeight must be a unitless ratio string, e.g. "1.5".
 
-1. Brand colours — primary (dominant CTA / accent) and secondary (supporting accent). Must be precise HEX.
-2. Background colours — page background and card/panel background.
-3. Text colours — body text and muted/secondary text.
-4. Border colour — most common separator / outline colour.
-5. Spacing — identify the base grid unit (4 or 8 px is common) and the CSS scale unit ("rem" or "px").
-6. Border-radius — small (inputs/tags), medium (cards/buttons), large (modals/sheets). Provide CSS values.
-7. Typography — font-family stack and heading font-weight.
-8. Layout vibe — 3–5 comma-separated tags. Be precise and site-specific.
-9. Type scale — measure or estimate the actual pixel sizes for hero headline, section heading,
-   body copy, and label text. Note whether line-height is tight (<1.3) or relaxed (>1.5).
-10. Layout structure — identify the dominant pattern (hero-centric / card-grid / editorial / dashboard / landing),
-    spatial density, hero style, nav style, section gap, and content padding.
-11. Component semantics:
-   - Card: estimate the box-shadow (be specific with blur/spread/alpha) and the internal padding
-     from how content sits inside panels. Even subtle shadows count.
-   - Button: measure horizontal and vertical padding from the primary CTA. Note if text is
-     letter-spaced (tracking) — many brands use 0.05–0.1 em on uppercase buttons.
+SPACING
+  • Identify the base grid unit (almost always 4 or 8 px).
+  • Compute scale deterministically from baseUnit:
+      xs = 1×, sm = 2×, md = 4×, lg = 6×, xl = 8×, 2xl = 12×, 3xl = 16×
+    Examples with base=4: xs="4px" sm="8px" md="16px" lg="24px" xl="32px" 2xl="48px" 3xl="64px"
+    Examples with base=8: xs="8px" sm="16px" md="32px" lg="48px" xl="64px" 2xl="96px" 3xl="128px"
 
-Return only the JSON object conforming to DesignTokens. No other text.`;
+RADIUS
+  • none = "0"  always.
+  • full = "9999px" always.
+  • sm   = input/badge radius (e.g. "4px" or "6px").
+  • md   = button/card radius (e.g. "8px" or "12px").
+  • lg   = panel/modal radius (e.g. "16px" or "20px").
+  • xl   = sheet/drawer radius (e.g. "24px" or "28px").
+  • A flat design → all small values; a bubbly design → large values.
+
+SHADOW
+  • Observe the page's depth / elevation cues. Flat designs use very subtle or no shadows;
+    layered designs have distinct elevation levels.
+  • sm  = hairline (nearly invisible), md = card standard, lg = elevated panel, xl = modal/overlay.
+  • If the site is flat/neumorphic, make all shadows very subtle.
+  • If dramatic shadows are visible, use realistic rgba blur values.
+
+SITE ARCHITECTURE
+  • paradigm: choose the SINGLE best match:
+      landing      — marketing hero + sections + CTA rows
+      saas-app     — task-oriented UI, forms, data tables
+      e-commerce   — product listings, cart, checkout flow
+      content-site — text-dominant, articles, editorial
+      portfolio    — showcase, image-heavy
+      docs         — structured reference / knowledge base
+      social-feed  — repeating user-generated content cards / infinite scroll
+      dashboard    — metrics, charts, sidebar nav, dense data
+  • density: compact = tight gutters; spacious = generous breathing room.
+  • motif: 3–5 concise descriptors specific to THIS site's visual personality.
+    Avoid generic terms. Good: "neo-brutalist, saturated palette, heavy borders".
+    Bad: "modern, clean, minimal".
+  • layout.navPosition: top-fixed = sticky top nav; top-static = non-sticky top;
+    side = sidebar; floating = overlaid / transparent; minimal = hidden or very sparse.
+
+SKELETON
+  • hero.present    = true if a large above-the-fold hero section is visible.
+  • hero.layout     = spatial arrangement (centered / split / full-bleed / asymmetric / none).
+  • hero.headline   = extract the EXACT text from the largest visible heading (max 80 chars).
+                     If not readable, write a representative paraphrase.
+  • hero.ctaCount   = count primary CTA buttons in the hero zone.
+  • nav.brand       = extract the exact brand/logo name from the navigation bar.
+  • nav.items       = list navigation link labels visible in the top or side nav (max 6).
+  • cards.present   = true if a grid or list of repeating card components is visible.
+  • cards.gridColumns = 0 if no cards; otherwise count columns in the primary card grid.
+  • cards.hasShadow = true if cards carry a visible box-shadow / elevation.
+  • footer.present  = true if a footer is visible.
+  • footer.columns  = estimate number of footer content columns.
+
+OUTPUT ONLY the raw JSON object. Any character outside the JSON will cause a parse error.`;
+
+// ── User prompt ───────────────────────────────────────────────────────────────
+
+const USER_PROMPT = `Analyse this UI screenshot carefully and extract the full DesignTokens object.
+
+Work through each section in order:
+
+1. COLORS — identify brand primary, secondary, accent; page/surface/overlay backgrounds;
+   primary/secondary/inverse text; border colour; status colours.
+
+2. TYPOGRAPHY — identify font families (body, heading, mono); font weights in use;
+   measure or estimate all 8 scale steps (xs → 4xl) with sizes and line-heights.
+
+3. SPACING — identify the base grid unit (4 or 8 px) then compute the full named scale.
+
+4. RADIUS — observe corner radii on inputs, buttons, cards, modals; assign none/sm/md/lg/xl/full.
+
+5. SHADOW — observe depth and elevation cues; assign sm/md/lg/xl box-shadow values.
+
+6. SITE ARCHITECTURE — classify the paradigm, density, motif; describe layout type and nav position;
+   analyse visual weight (dominant element, design hierarchy philosophy).
+
+7. SKELETON — extract the actual hero headline text, nav brand name and item labels, card grid info,
+   footer presence. Be specific — use text you can read in the screenshot.
+
+Return only the JSON object. No other text.`;
+
+// ── Error class ───────────────────────────────────────────────────────────────
 
 export class ExtractionError extends Error {
   constructor(
@@ -113,13 +178,13 @@ export class ExtractionError extends Error {
   }
 }
 
+// ── Main export ───────────────────────────────────────────────────────────────
+
 export async function extractDesignSystem(
   screenshotBuffer: Buffer,
   mimeType: 'image/png' | 'image/jpeg' | 'image/gif' | 'image/webp' = 'image/png',
 ): Promise<DesignTokens> {
   const client = new Anthropic();
-
-  const base64Image = screenshotBuffer.toString('base64');
 
   const response = await client.messages.create({
     model: MODEL,
@@ -131,16 +196,9 @@ export async function extractDesignSystem(
         content: [
           {
             type: 'image',
-            source: {
-              type: 'base64',
-              media_type: mimeType,
-              data: base64Image,
-            },
+            source: { type: 'base64', media_type: mimeType, data: screenshotBuffer.toString('base64') },
           },
-          {
-            type: 'text',
-            text: USER_PROMPT,
-          },
+          { type: 'text', text: USER_PROMPT },
         ],
       },
     ],
@@ -152,8 +210,6 @@ export async function extractDesignSystem(
   }
 
   const raw = firstBlock.text.trim();
-
-  // Strip accidental markdown fences the model may still emit
   const jsonText = raw
     .replace(/^```(?:json)?\s*/i, '')
     .replace(/\s*```$/i, '')
@@ -163,63 +219,53 @@ export async function extractDesignSystem(
   try {
     tokens = JSON.parse(jsonText) as DesignTokens;
   } catch {
-    throw new ExtractionError(
-      `Claude returned non-JSON output. Raw response saved for inspection.`,
-      raw,
-    );
+    throw new ExtractionError('Claude returned non-JSON output.', raw);
   }
 
   validateTokens(tokens);
-
   return tokens;
 }
 
-/** Lightweight structural guard — catches missing top-level keys early. */
+// ── Validation ────────────────────────────────────────────────────────────────
+
 function validateTokens(t: unknown): asserts t is DesignTokens {
   const required: string[] = [
-    'colors',
-    'colors.brand',
-    'colors.brand.primary',
-    'colors.brand.secondary',
-    'colors.background',
-    'colors.background.main',
-    'colors.background.card',
-    'colors.text',
-    'colors.text.base',
-    'colors.text.muted',
-    'colors.border',
-    'spacing',
-    'spacing.base',
-    'spacing.scale',
-    'borderRadius',
-    'borderRadius.small',
-    'borderRadius.medium',
-    'borderRadius.large',
-    'typography',
-    'typography.sans',
-    'typography.headingWeight',
-    'layoutVibe',
-    'typeScale',
-    'typeScale.hero',
-    'typeScale.heading',
-    'typeScale.body',
-    'typeScale.label',
-    'typeScale.lineHeight',
-    'layoutStructure',
-    'layoutStructure.pattern',
-    'layoutStructure.density',
-    'layoutStructure.heroStyle',
-    'layoutStructure.navStyle',
-    'layoutStructure.sectionGap',
-    'layoutStructure.contentPadding',
-    'components',
-    'components.card',
-    'components.card.shadow',
-    'components.card.padding',
-    'components.button',
-    'components.button.paddingX',
-    'components.button.paddingY',
-    'components.button.letterSpacing',
+    // color
+    'color', 'color.brand', 'color.brand.primary', 'color.brand.secondary', 'color.brand.accent',
+    'color.background', 'color.background.page', 'color.background.surface', 'color.background.overlay',
+    'color.text', 'color.text.primary', 'color.text.secondary', 'color.text.inverse',
+    'color.border',
+    'color.status', 'color.status.success', 'color.status.warning', 'color.status.error',
+    // typography
+    'typography', 'typography.families', 'typography.families.body', 'typography.families.heading', 'typography.families.mono',
+    'typography.weights', 'typography.weights.regular', 'typography.weights.medium', 'typography.weights.semibold', 'typography.weights.bold',
+    'typography.scale', 'typography.scale.xs', 'typography.scale.xs.size', 'typography.scale.xs.lineHeight',
+    'typography.scale.sm', 'typography.scale.sm.size',
+    'typography.scale.base', 'typography.scale.base.size',
+    'typography.scale.lg', 'typography.scale.lg.size',
+    'typography.scale.xl', 'typography.scale.xl.size',
+    'typography.scale.2xl', 'typography.scale.2xl.size',
+    'typography.scale.3xl', 'typography.scale.3xl.size',
+    'typography.scale.4xl', 'typography.scale.4xl.size',
+    // spacing
+    'spacing', 'spacing.baseUnit',
+    'spacing.scale', 'spacing.scale.xs', 'spacing.scale.sm', 'spacing.scale.md',
+    'spacing.scale.lg', 'spacing.scale.xl', 'spacing.scale.2xl', 'spacing.scale.3xl',
+    // radius
+    'radius', 'radius.none', 'radius.sm', 'radius.md', 'radius.lg', 'radius.xl', 'radius.full',
+    // shadow
+    'shadow', 'shadow.sm', 'shadow.md', 'shadow.lg', 'shadow.xl',
+    // siteArchitecture
+    'siteArchitecture', 'siteArchitecture.paradigm', 'siteArchitecture.density',
+    'siteArchitecture.motif', 'siteArchitecture.layout', 'siteArchitecture.layout.type',
+    'siteArchitecture.layout.navPosition', 'siteArchitecture.visualWeight',
+    'siteArchitecture.visualWeight.dominant', 'siteArchitecture.visualWeight.hierarchy',
+    // skeleton
+    'skeleton', 'skeleton.hero', 'skeleton.hero.present', 'skeleton.hero.layout',
+    'skeleton.hero.headline', 'skeleton.hero.ctaCount',
+    'skeleton.nav', 'skeleton.nav.brand', 'skeleton.nav.items',
+    'skeleton.cards', 'skeleton.cards.present', 'skeleton.cards.gridColumns', 'skeleton.cards.hasShadow',
+    'skeleton.footer', 'skeleton.footer.present', 'skeleton.footer.columns',
   ];
 
   for (const path of required) {

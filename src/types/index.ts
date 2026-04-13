@@ -1,95 +1,200 @@
+/**
+ * VibeExtract Design Token Schema — v2
+ *
+ * Five semantic layers: Color · Typography · Spacing · Radius · Shadow
+ * Two structural layers: SiteArchitecture · Skeleton
+ * One optional physical layer: spacingSystem · typographyScale (from Puppeteer)
+ */
+
 export interface DesignTokens {
-  colors: {
-    brand: { primary: string; secondary: string };
-    background: { main: string; card: string };
-    text: { base: string; muted: string };
+  // ── 1. Color ────────────────────────────────────────────────────────────────
+  color: {
+    brand: {
+      /** Dominant CTA / accent — HEX */
+      primary:   string;
+      /** Supporting accent — HEX */
+      secondary: string;
+      /** Highlight / interactive state — HEX */
+      accent:    string;
+    };
+    background: {
+      /** Main page background — HEX */
+      page:    string;
+      /** Card / panel / widget surface — HEX */
+      surface: string;
+      /** Modal scrim / tooltip overlay — may be rgba() for opacity */
+      overlay: string;
+    };
+    text: {
+      /** Main body text — HEX */
+      primary:   string;
+      /** Muted / helper / metadata text — HEX */
+      secondary: string;
+      /** Text on dark or branded surfaces — HEX */
+      inverse:   string;
+    };
+    /** Most common separator / outline — HEX */
     border: string;
+    status: {
+      success: string;  // HEX — e.g. "#10B981"
+      warning: string;  // HEX — e.g. "#F59E0B"
+      error:   string;  // HEX — e.g. "#EF4444"
+    };
   };
-  spacing: { base: number; scale: string }; // e.g. 4, "rem"
-  borderRadius: { small: string; medium: string; large: string };
+
+  // ── 2. Typography ────────────────────────────────────────────────────────────
   typography: {
-    sans: string;
-    headingWeight: string;
+    families: {
+      /** Body / UI font-family stack */
+      body:    string;
+      /** Heading font-family stack (may equal body) */
+      heading: string;
+      /** Monospace stack for code / data */
+      mono:    string;
+    };
+    weights: {
+      regular:  string;   // "400"
+      medium:   string;   // "500"
+      semibold: string;   // "600"
+      bold:     string;   // "700"
+    };
+    /**
+     * 8-level type scale.
+     * size = CSS value (px or rem); lineHeight = unitless ratio.
+     */
+    scale: {
+      xs:    { size: string; lineHeight: string };  // caption / label
+      sm:    { size: string; lineHeight: string };  // small body text
+      base:  { size: string; lineHeight: string };  // default body copy
+      lg:    { size: string; lineHeight: string };  // lead / large body
+      xl:    { size: string; lineHeight: string };  // card title / h5
+      '2xl': { size: string; lineHeight: string };  // section title / h4
+      '3xl': { size: string; lineHeight: string };  // page heading / h3
+      '4xl': { size: string; lineHeight: string };  // hero headline / h1–h2
+    };
   };
-  /** Free-form layout personality — e.g. "high-density grid · generous whitespace · oversized headings" */
-  layoutVibe: string;
-  /** Font scale extracted from the site's visual hierarchy */
-  typeScale: {
-    hero: string;       // largest headline size, e.g. "72px"
-    heading: string;    // section heading size, e.g. "32px"
-    body: string;       // body copy size, e.g. "16px"
-    label: string;      // captions / labels, e.g. "12px"
-    lineHeight: string; // dominant line-height rhythm, e.g. "1.2" or "1.6"
+
+  // ── 3. Spacing ───────────────────────────────────────────────────────────────
+  spacing: {
+    /** Grid base unit in px — almost always 4 or 8 */
+    baseUnit: number;
+    /** Named semantic scale derived from baseUnit (all CSS px strings) */
+    scale: {
+      xs:    string;   // 1× baseUnit
+      sm:    string;   // 2× baseUnit
+      md:    string;   // 4× baseUnit
+      lg:    string;   // 6× baseUnit
+      xl:    string;   // 8× baseUnit
+      '2xl': string;   // 12× baseUnit
+      '3xl': string;   // 16× baseUnit
+    };
   };
-  /** Structural layout patterns that define the page skeleton */
-  layoutStructure: {
-    /** Overall page layout pattern */
-    pattern: 'hero-centric' | 'card-grid' | 'editorial' | 'dashboard' | 'landing';
+
+  // ── 4. Border Radius ─────────────────────────────────────────────────────────
+  radius: {
+    none: string;  // "0"
+    sm:   string;  // tags / badges
+    md:   string;  // inputs / buttons
+    lg:   string;  // cards / panels
+    xl:   string;  // sheets / drawers
+    full: string;  // pill / circle — "9999px"
+  };
+
+  // ── 5. Shadow ────────────────────────────────────────────────────────────────
+  shadow: {
+    sm:  string;  // hairline — very subtle, e.g. "0 1px 2px rgba(0,0,0,0.06)"
+    md:  string;  // card — standard elevation, e.g. "0 4px 12px rgba(0,0,0,0.08)"
+    lg:  string;  // panel — elevated, e.g. "0 8px 24px rgba(0,0,0,0.12)"
+    xl:  string;  // modal — dramatic, e.g. "0 20px 60px rgba(0,0,0,0.20)"
+  };
+
+  // ── 6. Site Architecture ─────────────────────────────────────────────────────
+  siteArchitecture: {
+    /**
+     * Primary structural paradigm of the page.
+     * landing     — marketing hero + feature sections + CTA rows
+     * saas-app    — authenticated app UI, task-oriented
+     * e-commerce  — product grid, shopping-focused
+     * content-site — text-dominant, long-form, editorial
+     * portfolio   — showcase, image-heavy, personal brand
+     * docs        — documentation, structured reference
+     * social-feed — infinite scroll, user-generated cards
+     * dashboard   — data-dense, metrics, sidebar navigation
+     */
+    paradigm: 'landing' | 'saas-app' | 'e-commerce' | 'content-site' | 'portfolio' | 'docs' | 'social-feed' | 'dashboard';
     /** Spatial density of the page */
     density: 'compact' | 'comfortable' | 'spacious';
-    /** Hero section treatment */
-    heroStyle: 'full-bleed' | 'split' | 'centered' | 'none';
-    /** Navigation style */
-    navStyle: 'sticky' | 'transparent' | 'sidebar' | 'minimal';
-    /** Estimated vertical gap between major sections */
-    sectionGap: string;   // e.g. "80px"
-    /** Estimated horizontal content padding */
-    contentPadding: string; // e.g. "5%" or "48px"
-  };
-  /** Key component semantics beyond color/radius */
-  components: {
-    card: {
-      shadow: string;   // CSS box-shadow, e.g. "0 2px 8px rgba(0,0,0,0.12)"
-      padding: string;  // CSS shorthand, e.g. "16px 20px"
+    /** Free-text visual motif / personality — 3–5 comma-separated descriptors */
+    motif: string;
+    layout: {
+      type: 'single-column' | 'multi-column' | 'sidebar' | 'grid' | 'masonry';
+      navPosition: 'top-fixed' | 'top-static' | 'side' | 'floating' | 'minimal';
     };
-    button: {
-      paddingX: string;      // e.g. "24px"
-      paddingY: string;      // e.g. "10px"
-      letterSpacing: string; // e.g. "0.04em" or "normal"
+    visualWeight: {
+      /** Which element type carries the most visual weight */
+      dominant:  'typography' | 'imagery' | 'data' | 'color';
+      /** Overall design philosophy */
+      hierarchy: 'editorial' | 'functional' | 'expressive';
     };
   };
 
+  // ── 7. Component Skeleton ────────────────────────────────────────────────────
+  skeleton: {
+    hero: {
+      present:  boolean;
+      /** Spatial arrangement of the hero section */
+      layout:   'centered' | 'split' | 'full-bleed' | 'asymmetric' | 'none';
+      /** Extracted or inferred primary headline text */
+      headline: string;
+      /** Number of visible CTA buttons in the hero */
+      ctaCount: number;
+    };
+    nav: {
+      /** Extracted brand / logo name */
+      brand: string;
+      /** Main navigation link labels (up to 6) */
+      items: string[];
+    };
+    cards: {
+      present:     boolean;
+      /** Number of columns in the card grid (0 if not a card layout) */
+      gridColumns: number;
+      /** Whether cards carry a visible drop shadow */
+      hasShadow:   boolean;
+    };
+    footer: {
+      present: boolean;
+      /** Approximate number of columns in the footer */
+      columns: number;
+    };
+  };
+
+  // ── 8. Physical measurements — optional (populated by Puppeteer pass) ────────
   /**
-   * Physical spacing system — measured from computed CSS via Puppeteer.
-   * All values are exact px integers snapped to the detected base grid unit.
-   * Optional: present only when the physical extractor ran successfully.
+   * Precise spacing system measured from computed CSS.
+   * When present, values are exact px integers snapped to the detected base grid.
    */
   spacingSystem?: {
-    /** Detected grid base unit in px (almost always 4 or 8) */
     baseUnit: number;
-    /** Deduplicated step scale snapped to the grid, e.g. ["4px","8px","12px","16px","24px","32px"] */
-    steps: string[];
-    /** Semantic named tokens derived from the scale */
+    steps:    string[];
     named: {
-      xs:   string;   // 1× base
-      sm:   string;   // 2× base
-      md:   string;   // 4× base
-      lg:   string;   // 6× base
-      xl:   string;   // 8× base
-      '2xl': string;  // 12× base
-      '3xl': string;  // 16× base
+      xs: string; sm: string; md: string;
+      lg: string; xl: string; '2xl': string; '3xl': string;
     };
   };
-
   /**
-   * Physical typography scale — measured from computed CSS via Puppeteer.
-   * px values are exact integers; rem values are relative to the page root font-size.
-   * Optional: present only when the physical extractor ran successfully.
+   * Precise typography scale measured from computed CSS.
+   * When present, px/rem values are exact and role assignments are data-driven.
    */
   typographyScale?: {
-    /** Most-frequent body text size, e.g. "16px" */
-    baseSize: string;
-    /** baseSizeRem relative to page root, e.g. "1rem" */
+    baseSize:    string;
     baseSizeRem: string;
-    /** Unique font-family names detected on the page */
-    families: string[];
-    /** All unique type sizes, sorted smallest → largest */
+    families:    string[];
     steps: Array<{
-      px:         string;  // "14px"
-      rem:        string;  // "0.875rem"
-      lineHeight: string;  // "1.5"
-      weight:     string;  // "400"
-      /** Inferred semantic role: label | body-sm | body | body-lg | h5 | h4 | h3 | h2 | h1 | display */
+      px:         string;
+      rem:        string;
+      lineHeight: string;
+      weight:     string;
       role:       string;
     }>;
   };
