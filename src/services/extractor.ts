@@ -1,6 +1,6 @@
 import Anthropic from '@anthropic-ai/sdk';
 import type { DesignTokens } from '../types';
-import type { SpacingSystem, TypographyScale } from './cssExtractor';
+import type { SpacingSystem, TypographyScale, ShadowSpec } from './cssExtractor';
 
 // ── Physical calibration context ─────────────────────────────────────────────
 // When Puppeteer measurements are available, we serialize them into a compact
@@ -10,6 +10,7 @@ import type { SpacingSystem, TypographyScale } from './cssExtractor';
 interface PhysicalContext {
   spacingSystem?:   SpacingSystem;
   typographyScale?: TypographyScale;
+  shadowSpecs?:     ShadowSpec[];
 }
 
 function buildPhysicalCalibrationBlock(ctx: PhysicalContext | undefined): string {
@@ -39,14 +40,25 @@ function buildPhysicalCalibrationBlock(ctx: PhysicalContext | undefined): string
     if (t.families.length > 0) {
       lines.push(`  Detected font families: ${t.families.join(', ')}`);
     }
-    lines.push(`  Measured type steps (px | rem | lineHeight | weight | role):`);
+    lines.push(`  Measured type steps (px | rem | lineHeight | weight | letter-spacing | role):`);
     for (const step of t.steps) {
-      lines.push(`    ${step.px} | ${step.rem} | lh:${step.lineHeight} | w:${step.weight} | ${step.role}`);
+      lines.push(`    ${step.px} | ${step.rem} | lh:${step.lineHeight} | w:${step.weight} | ls:${step.letterSpacing} | ${step.role}`);
+    }
+    lines.push('');
+  }
+
+  if (ctx.shadowSpecs && ctx.shadowSpecs.length > 0) {
+    lines.push(`### Box Shadows (measured from UI components)`);
+    lines.push(`  These are exact multi-layer CSS values from buttons, cards, nav, and panels.`);
+    lines.push(`  Use the most frequent value as shadow.md (card elevation standard).`);
+    for (const spec of ctx.shadowSpecs.slice(0, 6)) {
+      lines.push(`    [×${spec.frequency}] ${spec.value}`);
     }
     lines.push('');
   }
 
   lines.push('Use these exact px/rem values when populating typography.scale and spacing fields.');
+  lines.push('Use the measured box-shadow values when populating shadow.sm / shadow.md / shadow.lg / shadow.xl.');
   lines.push('If a measured step maps to a scale level, use its measured value, not a visual estimate.');
 
   return lines.join('\n');

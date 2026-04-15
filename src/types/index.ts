@@ -198,11 +198,13 @@ export interface DesignTokens {
     baseSizeRem: string;
     families:    string[];
     steps: Array<{
-      px:         string;
-      rem:        string;
-      lineHeight: string;
-      weight:     string;
-      role:       string;
+      px:            string;
+      rem:           string;
+      lineHeight:    string;
+      weight:        string;
+      /** Computed letter-spacing, e.g. "0px", "0.05em", "1.5px" */
+      letterSpacing: string;
+      role:          string;
     }>;
   };
 
@@ -210,11 +212,29 @@ export interface DesignTokens {
    * Asset inventory collected by Puppeteer — image and SVG URLs found on the page.
    * Images include <img src>, <img srcset>, and CSS background-image sources.
    * SVGs include <img src="*.svg">, <use href> references, and detected sprite sheets.
+   * Gradients are CSS background-image values (linear/radial/conic-gradient).
+   * InlineSvgs are raw outerHTML strings of <svg> elements (icons, logos).
    */
   assets?: {
     /** External image URLs (excluding data: URIs), capped at 50 entries */
     images: string[];
     /** SVG file URLs and detected sprite sheet references */
     svgs: string[];
+    /** CSS gradient backgrounds found on structural elements */
+    gradients: Array<{ element: string; value: string }>;
+    /** Raw outerHTML of inline <svg> elements (icons, logos, illustrations) */
+    inlineSvgs: string[];
   };
+
+  /**
+   * Box-shadow inventory collected from key UI component elements (buttons, cards, nav, etc.)
+   * Each entry records the full multi-layer CSS value and how many elements share it.
+   * Sorted by frequency descending — the top entry is the dominant elevation style.
+   */
+  shadowSpecs?: Array<{
+    /** Full multi-layer CSS box-shadow value */
+    value: string;
+    /** Number of matched UI elements using this exact shadow */
+    frequency: number;
+  }>;
 }

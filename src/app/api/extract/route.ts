@@ -175,7 +175,11 @@ export async function POST(req: NextRequest): Promise<Response> {
           screenshotBuffer,
           'image/png',
           physicalForClaude
-            ? { spacingSystem: physicalForClaude.spacingSystem, typographyScale: physicalForClaude.typographyScale }
+            ? {
+                spacingSystem:   physicalForClaude.spacingSystem,
+                typographyScale: physicalForClaude.typographyScale,
+                shadowSpecs:     physicalForClaude.shadowSpecs,
+              }
             : undefined,
         );
         designCritique = result.designCritique;
@@ -195,6 +199,8 @@ export async function POST(req: NextRequest): Promise<Response> {
           ...tokens,
           spacingSystem:   physical.spacingSystem,
           typographyScale: physical.typographyScale,
+          // Physical DOM extraction: exact shadow inventory from real UI components
+          shadowSpecs:     physical.shadowSpecs,
           // Physical DOM extraction can read exact text — prefer it over AI inference
           assets: physical.assets,
           skeleton: {

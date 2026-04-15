@@ -4,6 +4,16 @@
  *
  * Runs in parallel with the Claude Vision pass and augments the token set
  * with 100 % measured px / rem values plus DOM-extracted skeleton hints.
+ *
+ * Physical scouting pass captures:
+ *   • letter-spacing (per typography step)
+ *   • line-height ratio (per typography step)
+ *   • font-weight (per typography step)
+ *   • padding / margin / gap (spacing system derivation)
+ *   • multi-layer box-shadow (per UI component type)
+ *   • CSS gradient backgrounds (linear / radial / conic)
+ *   • raw inline SVG source (icons, logos, illustrations)
+ *   • external image and SVG URLs
  */
 
 import puppeteer from 'puppeteer';
@@ -17,13 +27,13 @@ export interface SpacingSystem {
   steps: string[];
   /** Semantic named tokens mapped from the scale */
   named: {
-    xs:   string;  // 1× base
-    sm:   string;  // 2× base
-    md:   string;  // 4× base
-    lg:   string;  // 6× base
-    xl:   string;  // 8× base
-    '2xl': string; // 12× base
-    '3xl': string; // 16× base
+    xs:    string;  // 1× base
+    sm:    string;  // 2× base
+    md:    string;  // 4× base
+    lg:    string;  // 6× base
+    xl:    string;  // 8× base
+    '2xl': string;  // 12× base
+    '3xl': string;  // 16× base
   };
 }
 
@@ -36,6 +46,8 @@ export interface TypographyStep {
   lineHeight: string;
   /** Computed font-weight, e.g. "400" or "700" */
   weight: string;
+  /** Computed letter-spacing, e.g. "0px", "0.05em", "1.5px" */
+  letterSpacing: string;
   /** Inferred semantic role: label | body-sm | body | body-lg | h5 | h4 | h3 | h2 | h1 | display */
   role: string;
 }
@@ -52,9 +64,9 @@ export interface TypographyScale {
 }
 
 export interface SkeletonHints {
-  nav: { brand: string; items: string[] };
-  hero: { present: boolean; headline: string; ctaCount: number };
-  cards: { present: boolean; gridColumns: number; hasShadow: boolean };
+  nav:    { brand: string; items: string[] };
+  hero:   { present: boolean; headline: string; ctaCount: number };
+  cards:  { present: boolean; gridColumns: number; hasShadow: boolean };
   footer: { present: boolean; columns: number };
 }
 
@@ -63,6 +75,17 @@ export interface AssetCollection {
   images: string[];
   /** SVG file URLs and detected sprite sheet references */
   svgs: string[];
+  /** CSS gradient backgrounds found on structural elements (bg-image, not url()) */
+  gradients: Array<{ element: string; value: string }>;
+  /** Raw outerHTML of inline <svg> elements — icons, logos, illustrations */
+  inlineSvgs: string[];
+}
+
+export interface ShadowSpec {
+  /** Full multi-layer CSS box-shadow value, e.g. "0 4px 12px rgba(0,0,0,0.08), 0 1px 3px rgba(0,0,0,0.04)" */
+  value: string;
+  /** Number of matched UI component elements using this exact shadow */
+  frequency: number;
 }
 
 // ── Internal helpers ─────────────────────────────────────────────────────────
@@ -76,8 +99,8 @@ function gcd(a: number, b: number): number {
  * Most design systems use one of these; avoid exotic bases like 3 or 7.
  */
 function snapToStandardBase(raw: number): number {
-  if (raw <= 0) return 4;
-  if (raw <= 5) return 4;
+  if (raw <= 0)  return 4;
+  if (raw <= 5)  return 4;
   if (raw <= 10) return 8;
   // If larger (12, 16, …) honour it — some dense UIs use 6-pt grids
   return raw;
@@ -120,11 +143,11 @@ function buildSpacingSystem(rawValues: number[]): SpacingSystem {
     baseUnit: base,
     steps,
     named: {
-      xs:   px(base * 1),
-      sm:   px(base * 2),
-      md:   px(base * 4),
-      lg:   px(base * 6),
-      xl:   px(base * 8),
+      xs:    px(base * 1),
+      sm:    px(base * 2),
+      md:    px(base * 4),
+      lg:    px(base * 6),
+      xl:    px(base * 8),
       '2xl': px(base * 12),
       '3xl': px(base * 16),
     },
@@ -156,13 +179,14 @@ function buildTypographyScale(
   families: string[],
   rootFontSize: number,
 ): TypographyScale {
-  // Parse entries: key = "roundedPx|lineHeightRatio|fontWeight"
+  // Parse entries: key = "roundedPx|lineHeightRatio|fontWeight|letterSpacing"
   const parsed = fontEntries.map(([key, count]) => {
     const parts = key.split('|');
     return {
-      px:     Number(parts[0]),
-      lh:     Number(parts[1]),
-      weight: parts[2] ?? '400',
+      px:            Number(parts[0]),
+      lh:            Number(parts[1]),
+      weight:        parts[2] ?? '400',
+      letterSpacing: parts[3] ?? '0px',
       count,
     };
   });
@@ -174,6 +198,7 @@ function buildTypographyScale(
   const basePx = bodyCandidate?.px ?? 16;
 
   // Deduplicate by px size — keep highest-count entry per size
+  // (naturally picks the most common letter-spacing for that size)
   const bySize = new Map<number, typeof parsed[0]>();
   for (const f of parsed) {
     const existing = bySize.get(f.px);
@@ -182,12 +207,13 @@ function buildTypographyScale(
 
   const steps: TypographyStep[] = [...bySize.values()]
     .sort((a, b) => a.px - b.px)
-    .map(({ px, lh, weight }) => ({
-      px:         `${px}px`,
-      rem:        toRem(px, rootFontSize),
-      lineHeight: `${lh}`,
+    .map(({ px, lh, weight, letterSpacing }) => ({
+      px:            `${px}px`,
+      rem:           toRem(px, rootFontSize),
+      lineHeight:    `${lh}`,
       weight,
-      role:       assignRole(px, basePx),
+      letterSpacing,
+      role:          assignRole(px, basePx),
     }));
 
   return {
@@ -206,17 +232,31 @@ interface RawBrowserData {
   families:     string[];
   rootFontSize: number;
   skeleton:     SkeletonHints;
-  assets:       { images: string[]; svgs: string[] };
+  assets: {
+    images:     string[];
+    svgs:       string[];
+    gradients:  Array<{ element: string; value: string }>;
+    inlineSvgs: string[];
+  };
+  /** Top box-shadow values sorted by frequency: [cssValue, elementCount] */
+  shadows: Array<[string, number]>;
 }
 
 /**
  * Serialisable function that runs inside the Puppeteer page context.
  * Must use only browser-native APIs (no Node imports).
+ *
+ * Physical recon pass — everything measured via getComputedStyle():
+ *   • Spacing: padding, margin, flex/grid gap
+ *   • Typography: font-size, line-height, font-weight, letter-spacing
+ *   • Box-shadow: sampled from buttons, cards, nav, panels (multi-layer)
+ *   • Assets: img URLs, srcset, CSS background-image URLs + gradients
+ *   • Inline SVGs: raw outerHTML of icon / logo SVGs
  */
 function browserExtract(): RawBrowserData {
-  const spacingSet  = new Set<number>();
-  const fontMap     = new Map<string, number>();
-  const familySet   = new Set<string>();
+  const spacingSet = new Set<number>();
+  const fontMap    = new Map<string, number>();
+  const familySet  = new Set<string>();
 
   // Sample a representative set of semantic elements (cap at 600)
   const sample = Array.from(
@@ -233,8 +273,8 @@ function browserExtract(): RawBrowserData {
       s.paddingTop, s.paddingRight, s.paddingBottom, s.paddingLeft,
       s.marginTop,  s.marginBottom,
     ];
-    const display = s.display;
-    if (display === 'flex' || display === 'grid') {
+    const disp = s.display;
+    if (disp === 'flex' || disp === 'grid') {
       sVals.push(s.rowGap, s.columnGap);
     }
     for (const v of sVals) {
@@ -242,7 +282,7 @@ function browserExtract(): RawBrowserData {
       if (n > 0 && n < 200 && isFinite(n)) spacingSet.add(Math.round(n));
     }
 
-    // ── Typography ────────────────────────────────────────────────────────
+    // ── Typography — font-size, line-height, font-weight, letter-spacing ─
     const fs = parseFloat(s.fontSize);
     if (fs >= 10 && fs <= 96) {
       const lhRaw = s.lineHeight;
@@ -253,7 +293,10 @@ function browserExtract(): RawBrowserData {
         : 1.5;
       const fw = s.fontWeight;
       const ff = s.fontFamily.split(',')[0].trim().replace(/['"]/g, '');
-      const key = `${Math.round(fs)}|${lh}|${fw}`;
+      // Normalise letter-spacing: browser returns "normal" for default, "Npx" for explicit
+      const ls = s.letterSpacing === 'normal' ? '0px' : s.letterSpacing;
+      // Composite key captures all four physical dimensions
+      const key = `${Math.round(fs)}|${lh}|${fw}|${ls}`;
       fontMap.set(key, (fontMap.get(key) ?? 0) + 1);
       if (ff && ff.length < 50) familySet.add(ff);
     }
@@ -321,7 +364,7 @@ function browserExtract(): RawBrowserData {
       if (ps.display === 'grid') {
         gridColumns = ps.gridTemplateColumns.split(' ').filter(Boolean).length;
       } else if (ps.display === 'flex' && ps.flexWrap !== 'nowrap') {
-        const cardW = (cardEls[0] as HTMLElement).offsetWidth || 0;
+        const cardW  = (cardEls[0] as HTMLElement).offsetWidth || 0;
         const parentW = (parent as HTMLElement).offsetWidth || 0;
         if (cardW > 0) gridColumns = Math.min(Math.floor(parentW / cardW), 6);
       }
@@ -333,7 +376,7 @@ function browserExtract(): RawBrowserData {
 
   // — Footer
   const footerEl = document.querySelector('footer, [role="contentinfo"]');
-  let footerPresent = !!footerEl;
+  const footerPresent = !!footerEl;
   let footerColumns = 0;
   if (footerEl) {
     const fs2 = window.getComputedStyle(footerEl);
@@ -349,10 +392,11 @@ function browserExtract(): RawBrowserData {
   }
 
   // ── Asset detection ──────────────────────────────────────────────────────────
-  // Collect real image and SVG URLs from the live DOM — no guessing.
+  // Collect real image URLs, SVG URLs, gradient definitions, and inline SVG source.
 
   const imageUrlSet = new Set<string>();
   const svgUrlSet   = new Set<string>();
+  const gradients: Array<{ element: string; value: string }> = [];
 
   // 1. <img src> and <img srcset>
   document.querySelectorAll('img').forEach(img => {
@@ -385,16 +429,27 @@ function browserExtract(): RawBrowserData {
     });
   });
 
-  // 3. CSS background-image on prominent structural elements
+  // 3. CSS background-image on prominent structural elements —
+  //    capture BOTH external image URLs and CSS gradient definitions.
   const bgTargets = Array.from(
     document.querySelectorAll<Element>(
       '[class*="hero"], [class*="banner"], [class*="cover"], [class*="bg"], section, header, main',
     ),
-  ).slice(0, 15);
+  ).slice(0, 20);
+
   for (const el of bgTargets) {
     const bg = window.getComputedStyle(el).backgroundImage;
     if (bg && bg !== 'none') {
-      // May contain multiple values: "url(...), url(...)"
+      // Capture CSS gradients (linear-gradient, radial-gradient, conic-gradient…)
+      // These are real design decisions — not placeholder data.
+      if (bg.includes('gradient')) {
+        const className = String(el.className || el.tagName).trim().slice(0, 60);
+        // Avoid duplicate gradient values
+        if (!gradients.some(g => g.value === bg)) {
+          gradients.push({ element: className, value: bg });
+        }
+      }
+      // Also extract any image URLs embedded in background-image
       const matches = bg.matchAll(/url\(["']?([^"')]+)["']?\)/g);
       for (const m of matches) {
         const url = m[1];
@@ -426,9 +481,54 @@ function browserExtract(): RawBrowserData {
     }
   });
 
-  // Deduplicate and cap
-  const detectedImages = Array.from(imageUrlSet).slice(0, 50);
-  const detectedSvgs   = Array.from(svgUrlSet).slice(0, 20);
+  // 6. Inline SVG source — raw outerHTML for icons, logos, illustrations.
+  //    Capped at 10 SVGs × 8 KB each to avoid serialisation bloat.
+  const inlineSvgSrcs: string[] = [];
+  const svgEls = Array.from(document.querySelectorAll('svg'));
+  for (const svg of svgEls.slice(0, 25)) {
+    // Only capture SVGs with actual renderable content (not empty defs/filters)
+    const hasContent = svg.querySelector(
+      'path, rect, circle, ellipse, polygon, polyline, line',
+    );
+    if (hasContent) {
+      const src = svg.outerHTML;
+      if (src.length > 0 && src.length < 8000) {
+        inlineSvgSrcs.push(src);
+        if (inlineSvgSrcs.length >= 10) break;
+      }
+    }
+  }
+
+  // 7. Box-shadow inventory — targeted at UI components that typically carry elevation.
+  //    Records the exact multi-layer CSS value and how many elements share it.
+  const shadowMap = new Map<string, number>();
+  const shadowTargets = Array.from(
+    document.querySelectorAll(
+      [
+        'button',
+        '[class*="btn"]',
+        '[class*="card"]',
+        '[class*="modal"]',
+        '[class*="panel"]',
+        '[class*="dialog"]',
+        '[class*="dropdown"]',
+        '[class*="popup"]',
+        '[class*="toast"]',
+        '[class*="alert"]',
+        'nav',
+        'header',
+        '[class*="sidebar"]',
+        '[class*="drawer"]',
+      ].join(', '),
+    ),
+  ).slice(0, 120);
+
+  for (const el of shadowTargets) {
+    const bs = window.getComputedStyle(el).boxShadow;
+    if (bs && bs !== 'none' && bs !== '') {
+      shadowMap.set(bs, (shadowMap.get(bs) ?? 0) + 1);
+    }
+  }
 
   return {
     spacing:      Array.from(spacingSet).sort((a, b) => a - b),
@@ -443,7 +543,16 @@ function browserExtract(): RawBrowserData {
       cards:  { present: cardsPresent, gridColumns, hasShadow },
       footer: { present: footerPresent, columns: footerColumns },
     },
-    assets: { images: detectedImages, svgs: detectedSvgs },
+    assets: {
+      images:     Array.from(imageUrlSet).slice(0, 50),
+      svgs:       Array.from(svgUrlSet).slice(0, 20),
+      gradients:  gradients.slice(0, 10),
+      inlineSvgs: inlineSvgSrcs,
+    },
+    // Top 12 most-used shadows, sorted by frequency descending
+    shadows: Array.from(shadowMap.entries())
+               .sort((a, b) => b[1] - a[1])
+               .slice(0, 12),
   };
 }
 
@@ -454,6 +563,7 @@ export async function extractPhysicalTokens(url: string): Promise<{
   typographyScale: TypographyScale;
   skeleton:        SkeletonHints;
   assets:          AssetCollection;
+  shadowSpecs:     ShadowSpec[];
 }> {
   const browser = await puppeteer.launch({
     headless: true,
@@ -497,6 +607,7 @@ export async function extractPhysicalTokens(url: string): Promise<{
       typographyScale: buildTypographyScale(raw.fonts, raw.families, raw.rootFontSize),
       skeleton:        raw.skeleton,
       assets:          raw.assets,
+      shadowSpecs:     raw.shadows.map(([value, frequency]) => ({ value, frequency })),
     };
   } finally {
     await browser.close();

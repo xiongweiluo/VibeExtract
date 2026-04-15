@@ -196,10 +196,22 @@ function buildPhysicalSection(tokens: DesignTokens): string {
       parts.push(`- **Detected families:** ${t.families.join(', ')}`);
     }
     parts.push('');
-    parts.push('| px | rem | Line Height | Weight | Role |');
-    parts.push('|---|---|---|---|---|');
+    parts.push('| px | rem | Line Height | Weight | Letter Spacing | Role |');
+    parts.push('|---|---|---|---|---|---|');
     for (const step of t.steps) {
-      parts.push(`| ${step.px} | ${step.rem} | ${step.lineHeight} | ${step.weight} | ${step.role} |`);
+      const ls = step.letterSpacing ?? '—';
+      parts.push(`| ${step.px} | ${step.rem} | ${step.lineHeight} | ${step.weight} | ${ls} | ${step.role} |`);
+    }
+  }
+
+  if (tokens.shadowSpecs && tokens.shadowSpecs.length > 0) {
+    parts.push('');
+    parts.push('### Box Shadows (measured from UI components)');
+    parts.push('');
+    parts.push('| Frequency | CSS Value |');
+    parts.push('|---|---|');
+    for (const spec of tokens.shadowSpecs) {
+      parts.push(`| ×${spec.frequency} | \`${spec.value}\` |`);
     }
   }
 
@@ -210,24 +222,52 @@ function buildPhysicalSection(tokens: DesignTokens): string {
 
 function buildAssetSection(tokens: DesignTokens): string {
   const assets = tokens.assets;
-  if (!assets || (assets.images.length === 0 && assets.svgs.length === 0)) {
-    return '_No external assets detected._';
-  }
+  const hasAny =
+    assets &&
+    (assets.images.length > 0 ||
+      assets.svgs.length > 0 ||
+      (assets.gradients?.length ?? 0) > 0 ||
+      (assets.inlineSvgs?.length ?? 0) > 0);
+
+  if (!hasAny) return '_No external assets detected._';
 
   const parts: string[] = [];
 
-  if (assets.images.length > 0) {
-    parts.push(`### Images (${assets.images.length})`);
-    assets.images.slice(0, 20).forEach(url => parts.push(`- ${url}`));
-    if (assets.images.length > 20) {
-      parts.push(`_…and ${assets.images.length - 20} more_`);
+  if (assets!.images.length > 0) {
+    parts.push(`### Images (${assets!.images.length})`);
+    assets!.images.slice(0, 20).forEach(url => parts.push(`- ${url}`));
+    if (assets!.images.length > 20) {
+      parts.push(`_…and ${assets!.images.length - 20} more_`);
     }
   }
 
-  if (assets.svgs.length > 0) {
+  if (assets!.svgs.length > 0) {
     parts.push('');
-    parts.push(`### SVGs (${assets.svgs.length})`);
-    assets.svgs.forEach(url => parts.push(`- ${url}`));
+    parts.push(`### External SVGs (${assets!.svgs.length})`);
+    assets!.svgs.forEach(url => parts.push(`- ${url}`));
+  }
+
+  if (assets!.gradients && assets!.gradients.length > 0) {
+    parts.push('');
+    parts.push(`### CSS Gradients (${assets!.gradients.length})`);
+    parts.push('_Real background-image gradient values — use as-is in CSS._');
+    parts.push('');
+    parts.push('| Element | Gradient |');
+    parts.push('|---|---|');
+    for (const g of assets!.gradients) {
+      parts.push(`| \`${g.element}\` | \`${g.value.slice(0, 120)}${g.value.length > 120 ? '…' : ''}\` |`);
+    }
+  }
+
+  if (assets!.inlineSvgs && assets!.inlineSvgs.length > 0) {
+    parts.push('');
+    parts.push(`### Inline SVGs (${assets!.inlineSvgs.length} captured)`);
+    parts.push('_Raw <svg> source — icons, logos, illustrations. Embed directly in generated HTML._');
+    parts.push('');
+    assets!.inlineSvgs.forEach((src, i) => {
+      const preview = src.slice(0, 200).replace(/\n/g, ' ');
+      parts.push(`<details><summary>SVG #${i + 1} (${src.length} chars)</summary>\n\n\`\`\`html\n${src}\n\`\`\`\n\n</details>`);
+    });
   }
 
   return parts.join('\n');
