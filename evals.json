@@ -1,0 +1,394 @@
+{
+  "version": "1.0",
+  "generated": "2026-04-15",
+  "description": "EDD test suite for VibeExtract — 10 representative sites spanning the full design-system extraction challenge space",
+  "runConfig": {
+    "viewportWidth": 1440,
+    "viewportHeight": 900,
+    "navigationTimeout": 20000,
+    "settleDelayMs": 1500,
+    "screenshotType": "png"
+  },
+  "operators": [
+    "eq", "notEq",
+    "gt", "gte", "lt", "lte",
+    "pxGte", "pxLte",
+    "isTrue", "isFalse",
+    "notEmpty",
+    "isHexColor", "isDarkColor", "isLightColor",
+    "hasLargeStep",
+    "includes", "regex"
+  ],
+  "sites": [
+    {
+      "id": "hacker-news",
+      "name": "Hacker News",
+      "url": "https://news.ycombinator.com/",
+      "intent": "极简与表格",
+      "category": "minimal-table",
+      "notes": "Oldest-school UI on the list — no CSS frameworks, pure HTML table layout. Tests whether extractor avoids over-engineering a trivially simple page.",
+      "assertions": [
+        {
+          "id": "hn-no-gradients",
+          "description": "Minimal site uses zero CSS gradients on structural elements",
+          "source": "physical",
+          "field": "assets.gradients.length",
+          "op": "eq",
+          "expected": 0,
+          "weight": 2
+        },
+        {
+          "id": "hn-compact-type",
+          "description": "Body text ≤ 14px — hallmark of a dense, table-first layout",
+          "source": "physical",
+          "field": "typographyScale.baseSize",
+          "op": "pxLte",
+          "expected": 14,
+          "weight": 2
+        },
+        {
+          "id": "hn-density-compact",
+          "description": "AI correctly classifies layout density as compact",
+          "source": "tokens",
+          "field": "siteArchitecture.density",
+          "op": "eq",
+          "expected": "compact",
+          "weight": 2
+        }
+      ]
+    },
+    {
+      "id": "stripe",
+      "name": "Stripe Homepage",
+      "url": "https://stripe.com/",
+      "intent": "复杂渐变与动画",
+      "category": "gradient-animation",
+      "notes": "Stripe is the canonical reference for CSS gradient artistry. Must detect the multi-stop gradient backgrounds on hero + feature sections.",
+      "assertions": [
+        {
+          "id": "stripe-has-gradients",
+          "description": "CSS gradients detected on structural elements (the core Stripe visual signature)",
+          "source": "physical",
+          "field": "assets.gradients.length",
+          "op": "gt",
+          "expected": 0,
+          "weight": 3
+        },
+        {
+          "id": "stripe-paradigm-landing",
+          "description": "Page correctly classified as a marketing landing page",
+          "source": "tokens",
+          "field": "siteArchitecture.paradigm",
+          "op": "eq",
+          "expected": "landing",
+          "weight": 2
+        },
+        {
+          "id": "stripe-brand-hex",
+          "description": "Brand primary is a valid hex color (blue-purple range)",
+          "source": "tokens",
+          "field": "color.brand.primary",
+          "op": "isHexColor",
+          "expected": null,
+          "weight": 1
+        }
+      ]
+    },
+    {
+      "id": "linear",
+      "name": "Linear Homepage",
+      "url": "https://linear.app/",
+      "intent": "极致暗黑模式与发光阴影",
+      "category": "dark-mode-glow",
+      "notes": "Linear's dark mode is a design landmark. Key signals: near-black page background, coloured glow shadows (not just rgba black), tight type scale.",
+      "assertions": [
+        {
+          "id": "linear-dark-background",
+          "description": "Page background is a dark color — correct dark mode detection",
+          "source": "tokens",
+          "field": "color.background.page",
+          "op": "isDarkColor",
+          "expected": null,
+          "weight": 3
+        },
+        {
+          "id": "linear-has-shadows",
+          "description": "Box-shadows detected on UI components (glow / elevation system)",
+          "source": "physical",
+          "field": "shadowSpecs.length",
+          "op": "gt",
+          "expected": 0,
+          "weight": 2
+        },
+        {
+          "id": "linear-paradigm",
+          "description": "Site paradigm classified as landing",
+          "source": "tokens",
+          "field": "siteArchitecture.paradigm",
+          "op": "eq",
+          "expected": "landing",
+          "weight": 1
+        }
+      ]
+    },
+    {
+      "id": "shadcn-ui",
+      "name": "Shadcn UI",
+      "url": "https://ui.shadcn.com/",
+      "intent": "现代组件与 Tailwind 规范",
+      "category": "component-tailwind",
+      "notes": "Shadcn is built on Tailwind's 4px grid. The extractor must correctly detect the 4px base unit (not 8px) and classify the site as docs.",
+      "assertions": [
+        {
+          "id": "shadcn-4px-grid",
+          "description": "Tailwind's 4px base spacing unit correctly detected",
+          "source": "physical",
+          "field": "spacingSystem.baseUnit",
+          "op": "eq",
+          "expected": 4,
+          "weight": 3
+        },
+        {
+          "id": "shadcn-paradigm-docs",
+          "description": "Component library correctly classified as docs paradigm",
+          "source": "tokens",
+          "field": "siteArchitecture.paradigm",
+          "op": "eq",
+          "expected": "docs",
+          "weight": 2
+        },
+        {
+          "id": "shadcn-radius-defined",
+          "description": "Border radius token (md) is populated (Shadcn uses explicit radius vars)",
+          "source": "tokens",
+          "field": "radius.md",
+          "op": "notEmpty",
+          "expected": null,
+          "weight": 1
+        }
+      ]
+    },
+    {
+      "id": "apple-mac",
+      "name": "Apple Mac",
+      "url": "https://www.apple.com/mac/",
+      "intent": "复杂定位与滚动侦听",
+      "category": "scroll-positioning",
+      "notes": "Apple pages are famous for gigantic display type (60–80px+) and image-driven layouts. The typography extractor must surface steps in the display range.",
+      "assertions": [
+        {
+          "id": "apple-display-type",
+          "description": "Typography scale includes a display step ≥ 36px (Apple hero headline range)",
+          "source": "physical",
+          "field": "typographyScale.steps",
+          "op": "hasLargeStep",
+          "expected": 36,
+          "weight": 3
+        },
+        {
+          "id": "apple-image-rich",
+          "description": "Page contains ≥ 5 images (product shots and lifestyle imagery)",
+          "source": "physical",
+          "field": "assets.images.length",
+          "op": "gte",
+          "expected": 5,
+          "weight": 2
+        },
+        {
+          "id": "apple-not-compact",
+          "description": "Apple uses spacious or comfortable density — never compact",
+          "source": "tokens",
+          "field": "siteArchitecture.density",
+          "op": "notEq",
+          "expected": "compact",
+          "weight": 1
+        }
+      ]
+    },
+    {
+      "id": "airbnb",
+      "name": "Airbnb Homepage",
+      "url": "https://www.airbnb.com/",
+      "intent": "响应式网格与 Z-index 层级",
+      "category": "responsive-grid",
+      "notes": "Airbnb's listing grid is the canonical multi-column responsive card layout. Must detect cards, columns, and e-commerce paradigm.",
+      "assertions": [
+        {
+          "id": "airbnb-has-cards",
+          "description": "Card grid detected on the listing page",
+          "source": "physical",
+          "field": "skeleton.cards.present",
+          "op": "isTrue",
+          "expected": null,
+          "weight": 2
+        },
+        {
+          "id": "airbnb-multi-column",
+          "description": "Card grid has ≥ 3 columns (responsive multi-column layout)",
+          "source": "physical",
+          "field": "skeleton.cards.gridColumns",
+          "op": "gte",
+          "expected": 3,
+          "weight": 2
+        },
+        {
+          "id": "airbnb-ecommerce",
+          "description": "Site paradigm correctly classified as e-commerce",
+          "source": "tokens",
+          "field": "siteArchitecture.paradigm",
+          "op": "eq",
+          "expected": "e-commerce",
+          "weight": 2
+        }
+      ]
+    },
+    {
+      "id": "github-login",
+      "name": "GitHub Login",
+      "url": "https://github.com/login",
+      "intent": "表单结构与 Focus 状态",
+      "category": "form-structure",
+      "notes": "A simple focused form page. Tests whether the extractor correctly identifies a login form context, captures border tokens, and classifies as saas-app.",
+      "assertions": [
+        {
+          "id": "github-saas-paradigm",
+          "description": "Auth page correctly classified as saas-app",
+          "source": "tokens",
+          "field": "siteArchitecture.paradigm",
+          "op": "eq",
+          "expected": "saas-app",
+          "weight": 2
+        },
+        {
+          "id": "github-border-hex",
+          "description": "Border color token is a valid hex (input/form borders are explicit)",
+          "source": "tokens",
+          "field": "color.border",
+          "op": "isHexColor",
+          "expected": null,
+          "weight": 2
+        },
+        {
+          "id": "github-radius-populated",
+          "description": "Button/input border-radius (md) is defined",
+          "source": "tokens",
+          "field": "radius.md",
+          "op": "notEmpty",
+          "expected": null,
+          "weight": 1
+        }
+      ]
+    },
+    {
+      "id": "unsplash",
+      "name": "Unsplash",
+      "url": "https://unsplash.com/",
+      "intent": "瀑布流与高保真图片裁切",
+      "category": "masonry-images",
+      "notes": "Unsplash's masonry grid is the definitive test for image-heavy layout detection. Must find ≥ 15 images and classify layout as masonry.",
+      "assertions": [
+        {
+          "id": "unsplash-image-rich",
+          "description": "≥ 15 images detected on the page (photo grid)",
+          "source": "physical",
+          "field": "assets.images.length",
+          "op": "gte",
+          "expected": 15,
+          "weight": 3
+        },
+        {
+          "id": "unsplash-masonry-layout",
+          "description": "Layout type correctly identified as masonry",
+          "source": "tokens",
+          "field": "siteArchitecture.layout.type",
+          "op": "eq",
+          "expected": "masonry",
+          "weight": 2
+        },
+        {
+          "id": "unsplash-cards-detected",
+          "description": "Card grid structure detected in DOM",
+          "source": "physical",
+          "field": "skeleton.cards.present",
+          "op": "isTrue",
+          "expected": null,
+          "weight": 1
+        }
+      ]
+    },
+    {
+      "id": "vercel-blog",
+      "name": "Vercel Blog",
+      "url": "https://vercel.com/blog",
+      "intent": "Typography 排版系统",
+      "category": "typography-system",
+      "notes": "Vercel Blog is a typographically sophisticated content site. Key checks: body size ≥ 16px, ≥ 4 distinct type steps, content-site paradigm.",
+      "assertions": [
+        {
+          "id": "vercel-body-16px",
+          "description": "Body text is ≥ 16px — editorial-grade readability standard",
+          "source": "physical",
+          "field": "typographyScale.baseSize",
+          "op": "pxGte",
+          "expected": 16,
+          "weight": 2
+        },
+        {
+          "id": "vercel-rich-type-scale",
+          "description": "Typography scale has ≥ 4 distinct size steps (H1, H2, body, caption)",
+          "source": "physical",
+          "field": "typographyScale.steps.length",
+          "op": "gte",
+          "expected": 4,
+          "weight": 2
+        },
+        {
+          "id": "vercel-content-site",
+          "description": "Blog correctly classified as content-site paradigm",
+          "source": "tokens",
+          "field": "siteArchitecture.paradigm",
+          "op": "eq",
+          "expected": "content-site",
+          "weight": 2
+        }
+      ]
+    },
+    {
+      "id": "bilibili",
+      "name": "Bilibili Homepage",
+      "url": "https://www.bilibili.com/",
+      "intent": "高密度 DOM 与复杂浮层",
+      "category": "dense-dom",
+      "notes": "Bilibili is a stress test — 5000+ DOM nodes, heavy JS, popup layers, multiple overlapping z-index contexts. Primary check: no crash. Secondary: card + compact density detection.",
+      "assertions": [
+        {
+          "id": "bilibili-no-crash",
+          "description": "Physical extraction completes on high-density DOM without crashing (> 0 type steps extracted)",
+          "source": "physical",
+          "field": "typographyScale.steps.length",
+          "op": "gt",
+          "expected": 0,
+          "weight": 3
+        },
+        {
+          "id": "bilibili-cards-detected",
+          "description": "Video card grid detected despite DOM complexity",
+          "source": "physical",
+          "field": "skeleton.cards.present",
+          "op": "isTrue",
+          "expected": null,
+          "weight": 2
+        },
+        {
+          "id": "bilibili-compact-density",
+          "description": "High-density UI correctly classified as compact",
+          "source": "tokens",
+          "field": "siteArchitecture.density",
+          "op": "eq",
+          "expected": "compact",
+          "weight": 1
+        }
+      ]
+    }
+  ]
+}

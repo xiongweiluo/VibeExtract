@@ -6,7 +6,10 @@
     "dev": "next dev",
     "build": "next build",
     "start": "next start",
-    "test": "ts-node test-api.ts"
+    "test": "ts-node test-api.ts",
+    "eval": "ts-node --project tsconfig.scripts.json scripts/eval_runner.ts",
+    "eval:ai": "ts-node --project tsconfig.scripts.json scripts/eval_runner.ts --ai",
+    "eval:site": "ts-node --project tsconfig.scripts.json scripts/eval_runner.ts --site"
   },
   "dependencies": {
     "@anthropic-ai/sdk": "^0.88.0",
@@ -23,11 +26,13 @@
     "tailwind-merge": "^3.5.0"
   },
   "devDependencies": {
+    "@playwright/test": "^1.59.1",
     "@tailwindcss/postcss": "^4.2.2",
     "@types/node": "^20.0.0",
     "@types/react": "^19.2.14",
     "@types/react-dom": "^19.2.3",
     "autoprefixer": "^10.4.27",
+    "playwright": "^1.59.1",
     "postcss": "^8.5.9",
     "tailwindcss": "^4.2.2",
     "ts-node": "^10.9.0",

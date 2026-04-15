@@ -1,0 +1,563 @@
+[
+  {
+    "site": {
+      "id": "hacker-news",
+      "name": "Hacker News",
+      "url": "https://news.ycombinator.com/",
+      "intent": "极简与表格"
+    },
+    "durationMs": 7705,
+    "crashed": false,
+    "score": 4,
+    "maxScore": 4,
+    "pct": 100,
+    "status": "PASS",
+    "assertions": [
+      {
+        "id": "hn-no-gradients",
+        "description": "Minimal site uses zero CSS gradients on structural elements",
+        "source": "physical",
+        "field": "assets.gradients.length",
+        "op": "eq",
+        "expected": 0,
+        "weight": 2,
+        "actual": 0,
+        "passed": true,
+        "skipped": false
+      },
+      {
+        "id": "hn-compact-type",
+        "description": "Body text ≤ 14px — hallmark of a dense, table-first layout",
+        "source": "physical",
+        "field": "typographyScale.baseSize",
+        "op": "pxLte",
+        "expected": 14,
+        "weight": 2,
+        "actual": "13px",
+        "passed": true,
+        "skipped": false
+      },
+      {
+        "id": "hn-density-compact",
+        "description": "AI correctly classifies layout density as compact",
+        "source": "tokens",
+        "field": "siteArchitecture.density",
+        "op": "eq",
+        "expected": "compact",
+        "weight": 2,
+        "passed": false,
+        "skipped": true,
+        "skipReason": "AI token extraction was not run (omit --physical-only or add --ai to enable)"
+      }
+    ]
+  },
+  {
+    "site": {
+      "id": "stripe",
+      "name": "Stripe Homepage",
+      "url": "https://stripe.com/",
+      "intent": "复杂渐变与动画"
+    },
+    "durationMs": 2647,
+    "crashed": false,
+    "score": 3,
+    "maxScore": 3,
+    "pct": 100,
+    "status": "PASS",
+    "assertions": [
+      {
+        "id": "stripe-has-gradients",
+        "description": "CSS gradients detected on structural elements (the core Stripe visual signature)",
+        "source": "physical",
+        "field": "assets.gradients.length",
+        "op": "gt",
+        "expected": 0,
+        "weight": 3,
+        "actual": 1,
+        "passed": true,
+        "skipped": false
+      },
+      {
+        "id": "stripe-paradigm-landing",
+        "description": "Page correctly classified as a marketing landing page",
+        "source": "tokens",
+        "field": "siteArchitecture.paradigm",
+        "op": "eq",
+        "expected": "landing",
+        "weight": 2,
+        "passed": false,
+        "skipped": true,
+        "skipReason": "AI token extraction was not run (omit --physical-only or add --ai to enable)"
+      },
+      {
+        "id": "stripe-brand-hex",
+        "description": "Brand primary is a valid hex color (blue-purple range)",
+        "source": "tokens",
+        "field": "color.brand.primary",
+        "op": "isHexColor",
+        "expected": null,
+        "weight": 1,
+        "passed": false,
+        "skipped": true,
+        "skipReason": "AI token extraction was not run (omit --physical-only or add --ai to enable)"
+      }
+    ]
+  },
+  {
+    "site": {
+      "id": "linear",
+      "name": "Linear Homepage",
+      "url": "https://linear.app/",
+      "intent": "极致暗黑模式与发光阴影"
+    },
+    "durationMs": 2595,
+    "crashed": false,
+    "score": 2,
+    "maxScore": 2,
+    "pct": 100,
+    "status": "PASS",
+    "assertions": [
+      {
+        "id": "linear-dark-background",
+        "description": "Page background is a dark color — correct dark mode detection",
+        "source": "tokens",
+        "field": "color.background.page",
+        "op": "isDarkColor",
+        "expected": null,
+        "weight": 3,
+        "passed": false,
+        "skipped": true,
+        "skipReason": "AI token extraction was not run (omit --physical-only or add --ai to enable)"
+      },
+      {
+        "id": "linear-has-shadows",
+        "description": "Box-shadows detected on UI components (glow / elevation system)",
+        "source": "physical",
+        "field": "shadowSpecs.length",
+        "op": "gt",
+        "expected": 0,
+        "weight": 2,
+        "actual": 4,
+        "passed": true,
+        "skipped": false
+      },
+      {
+        "id": "linear-paradigm",
+        "description": "Site paradigm classified as landing",
+        "source": "tokens",
+        "field": "siteArchitecture.paradigm",
+        "op": "eq",
+        "expected": "landing",
+        "weight": 1,
+        "passed": false,
+        "skipped": true,
+        "skipReason": "AI token extraction was not run (omit --physical-only or add --ai to enable)"
+      }
+    ]
+  },
+  {
+    "site": {
+      "id": "shadcn-ui",
+      "name": "Shadcn UI",
+      "url": "https://ui.shadcn.com/",
+      "intent": "现代组件与 Tailwind 规范"
+    },
+    "durationMs": 2072,
+    "crashed": false,
+    "score": 3,
+    "maxScore": 3,
+    "pct": 100,
+    "status": "PASS",
+    "assertions": [
+      {
+        "id": "shadcn-4px-grid",
+        "description": "Tailwind's 4px base spacing unit correctly detected",
+        "source": "physical",
+        "field": "spacingSystem.baseUnit",
+        "op": "eq",
+        "expected": 4,
+        "weight": 3,
+        "actual": 4,
+        "passed": true,
+        "skipped": false
+      },
+      {
+        "id": "shadcn-paradigm-docs",
+        "description": "Component library correctly classified as docs paradigm",
+        "source": "tokens",
+        "field": "siteArchitecture.paradigm",
+        "op": "eq",
+        "expected": "docs",
+        "weight": 2,
+        "passed": false,
+        "skipped": true,
+        "skipReason": "AI token extraction was not run (omit --physical-only or add --ai to enable)"
+      },
+      {
+        "id": "shadcn-radius-defined",
+        "description": "Border radius token (md) is populated (Shadcn uses explicit radius vars)",
+        "source": "tokens",
+        "field": "radius.md",
+        "op": "notEmpty",
+        "expected": null,
+        "weight": 1,
+        "passed": false,
+        "skipped": true,
+        "skipReason": "AI token extraction was not run (omit --physical-only or add --ai to enable)"
+      }
+    ]
+  },
+  {
+    "site": {
+      "id": "apple-mac",
+      "name": "Apple Mac",
+      "url": "https://www.apple.com/mac/",
+      "intent": "复杂定位与滚动侦听"
+    },
+    "durationMs": 2070,
+    "crashed": false,
+    "score": 2,
+    "maxScore": 5,
+    "pct": 40,
+    "status": "FAIL",
+    "assertions": [
+      {
+        "id": "apple-display-type",
+        "description": "Typography scale includes a display step ≥ 36px (Apple hero headline range)",
+        "source": "physical",
+        "field": "typographyScale.steps",
+        "op": "hasLargeStep",
+        "expected": 36,
+        "weight": 3,
+        "actual": [
+          {
+            "px": "12px",
+            "rem": "0.7059rem",
+            "lineHeight": "1.3",
+            "weight": "600",
+            "letterSpacing": "-0.12px",
+            "role": "body"
+          },
+          {
+            "px": "14px",
+            "rem": "0.8235rem",
+            "lineHeight": "1.3",
+            "weight": "400",
+            "letterSpacing": "-0.224px",
+            "role": "body-lg"
+          },
+          {
+            "px": "17px",
+            "rem": "1rem",
+            "lineHeight": "1.5",
+            "weight": "400",
+            "letterSpacing": "-0.374px",
+            "role": "body-lg"
+          },
+          {
+            "px": "18px",
+            "rem": "1.0588rem",
+            "lineHeight": "1",
+            "weight": "300",
+            "letterSpacing": "0px",
+            "role": "h5"
+          },
+          {
+            "px": "24px",
+            "rem": "1.4118rem",
+            "lineHeight": "1.2",
+            "weight": "600",
+            "letterSpacing": "0.216px",
+            "role": "h4"
+          }
+        ],
+        "passed": false,
+        "skipped": false
+      },
+      {
+        "id": "apple-image-rich",
+        "description": "Page contains ≥ 5 images (product shots and lifestyle imagery)",
+        "source": "physical",
+        "field": "assets.images.length",
+        "op": "gte",
+        "expected": 5,
+        "weight": 2,
+        "actual": 6,
+        "passed": true,
+        "skipped": false
+      },
+      {
+        "id": "apple-not-compact",
+        "description": "Apple uses spacious or comfortable density — never compact",
+        "source": "tokens",
+        "field": "siteArchitecture.density",
+        "op": "notEq",
+        "expected": "compact",
+        "weight": 1,
+        "passed": false,
+        "skipped": true,
+        "skipReason": "AI token extraction was not run (omit --physical-only or add --ai to enable)"
+      }
+    ]
+  },
+  {
+    "site": {
+      "id": "airbnb",
+      "name": "Airbnb Homepage",
+      "url": "https://www.airbnb.com/",
+      "intent": "响应式网格与 Z-index 层级"
+    },
+    "durationMs": 2485,
+    "crashed": false,
+    "score": 0,
+    "maxScore": 4,
+    "pct": 0,
+    "status": "FAIL",
+    "assertions": [
+      {
+        "id": "airbnb-has-cards",
+        "description": "Card grid detected on the listing page",
+        "source": "physical",
+        "field": "skeleton.cards.present",
+        "op": "isTrue",
+        "expected": null,
+        "weight": 2,
+        "actual": false,
+        "passed": false,
+        "skipped": false
+      },
+      {
+        "id": "airbnb-multi-column",
+        "description": "Card grid has ≥ 3 columns (responsive multi-column layout)",
+        "source": "physical",
+        "field": "skeleton.cards.gridColumns",
+        "op": "gte",
+        "expected": 3,
+        "weight": 2,
+        "actual": 0,
+        "passed": false,
+        "skipped": false
+      },
+      {
+        "id": "airbnb-ecommerce",
+        "description": "Site paradigm correctly classified as e-commerce",
+        "source": "tokens",
+        "field": "siteArchitecture.paradigm",
+        "op": "eq",
+        "expected": "e-commerce",
+        "weight": 2,
+        "passed": false,
+        "skipped": true,
+        "skipReason": "AI token extraction was not run (omit --physical-only or add --ai to enable)"
+      }
+    ]
+  },
+  {
+    "site": {
+      "id": "github-login",
+      "name": "GitHub Login",
+      "url": "https://github.com/login",
+      "intent": "表单结构与 Focus 状态"
+    },
+    "durationMs": 2374,
+    "crashed": false,
+    "score": 0,
+    "maxScore": 0,
+    "pct": 100,
+    "status": "PASS",
+    "assertions": [
+      {
+        "id": "github-saas-paradigm",
+        "description": "Auth page correctly classified as saas-app",
+        "source": "tokens",
+        "field": "siteArchitecture.paradigm",
+        "op": "eq",
+        "expected": "saas-app",
+        "weight": 2,
+        "passed": false,
+        "skipped": true,
+        "skipReason": "AI token extraction was not run (omit --physical-only or add --ai to enable)"
+      },
+      {
+        "id": "github-border-hex",
+        "description": "Border color token is a valid hex (input/form borders are explicit)",
+        "source": "tokens",
+        "field": "color.border",
+        "op": "isHexColor",
+        "expected": null,
+        "weight": 2,
+        "passed": false,
+        "skipped": true,
+        "skipReason": "AI token extraction was not run (omit --physical-only or add --ai to enable)"
+      },
+      {
+        "id": "github-radius-populated",
+        "description": "Button/input border-radius (md) is defined",
+        "source": "tokens",
+        "field": "radius.md",
+        "op": "notEmpty",
+        "expected": null,
+        "weight": 1,
+        "passed": false,
+        "skipped": true,
+        "skipReason": "AI token extraction was not run (omit --physical-only or add --ai to enable)"
+      }
+    ]
+  },
+  {
+    "site": {
+      "id": "unsplash",
+      "name": "Unsplash",
+      "url": "https://unsplash.com/",
+      "intent": "瀑布流与高保真图片裁切"
+    },
+    "durationMs": 1846,
+    "crashed": false,
+    "score": 0,
+    "maxScore": 4,
+    "pct": 0,
+    "status": "FAIL",
+    "assertions": [
+      {
+        "id": "unsplash-image-rich",
+        "description": "≥ 15 images detected on the page (photo grid)",
+        "source": "physical",
+        "field": "assets.images.length",
+        "op": "gte",
+        "expected": 15,
+        "weight": 3,
+        "actual": 1,
+        "passed": false,
+        "skipped": false
+      },
+      {
+        "id": "unsplash-masonry-layout",
+        "description": "Layout type correctly identified as masonry",
+        "source": "tokens",
+        "field": "siteArchitecture.layout.type",
+        "op": "eq",
+        "expected": "masonry",
+        "weight": 2,
+        "passed": false,
+        "skipped": true,
+        "skipReason": "AI token extraction was not run (omit --physical-only or add --ai to enable)"
+      },
+      {
+        "id": "unsplash-cards-detected",
+        "description": "Card grid structure detected in DOM",
+        "source": "physical",
+        "field": "skeleton.cards.present",
+        "op": "isTrue",
+        "expected": null,
+        "weight": 1,
+        "actual": false,
+        "passed": false,
+        "skipped": false
+      }
+    ]
+  },
+  {
+    "site": {
+      "id": "vercel-blog",
+      "name": "Vercel Blog",
+      "url": "https://vercel.com/blog",
+      "intent": "Typography 排版系统"
+    },
+    "durationMs": 2229,
+    "crashed": false,
+    "score": 4,
+    "maxScore": 4,
+    "pct": 100,
+    "status": "PASS",
+    "assertions": [
+      {
+        "id": "vercel-body-16px",
+        "description": "Body text is ≥ 16px — editorial-grade readability standard",
+        "source": "physical",
+        "field": "typographyScale.baseSize",
+        "op": "pxGte",
+        "expected": 16,
+        "weight": 2,
+        "actual": "16px",
+        "passed": true,
+        "skipped": false
+      },
+      {
+        "id": "vercel-rich-type-scale",
+        "description": "Typography scale has ≥ 4 distinct size steps (H1, H2, body, caption)",
+        "source": "physical",
+        "field": "typographyScale.steps.length",
+        "op": "gte",
+        "expected": 4,
+        "weight": 2,
+        "actual": 8,
+        "passed": true,
+        "skipped": false
+      },
+      {
+        "id": "vercel-content-site",
+        "description": "Blog correctly classified as content-site paradigm",
+        "source": "tokens",
+        "field": "siteArchitecture.paradigm",
+        "op": "eq",
+        "expected": "content-site",
+        "weight": 2,
+        "passed": false,
+        "skipped": true,
+        "skipReason": "AI token extraction was not run (omit --physical-only or add --ai to enable)"
+      }
+    ]
+  },
+  {
+    "site": {
+      "id": "bilibili",
+      "name": "Bilibili Homepage",
+      "url": "https://www.bilibili.com/",
+      "intent": "高密度 DOM 与复杂浮层"
+    },
+    "durationMs": 2663,
+    "crashed": false,
+    "score": 5,
+    "maxScore": 5,
+    "pct": 100,
+    "status": "PASS",
+    "assertions": [
+      {
+        "id": "bilibili-no-crash",
+        "description": "Physical extraction completes on high-density DOM without crashing (> 0 type steps extracted)",
+        "source": "physical",
+        "field": "typographyScale.steps.length",
+        "op": "gt",
+        "expected": 0,
+        "weight": 3,
+        "actual": 3,
+        "passed": true,
+        "skipped": false
+      },
+      {
+        "id": "bilibili-cards-detected",
+        "description": "Video card grid detected despite DOM complexity",
+        "source": "physical",
+        "field": "skeleton.cards.present",
+        "op": "isTrue",
+        "expected": null,
+        "weight": 2,
+        "actual": true,
+        "passed": true,
+        "skipped": false
+      },
+      {
+        "id": "bilibili-compact-density",
+        "description": "High-density UI correctly classified as compact",
+        "source": "tokens",
+        "field": "siteArchitecture.density",
+        "op": "eq",
+        "expected": "compact",
+        "weight": 1,
+        "passed": false,
+        "skipped": true,
+        "skipReason": "AI token extraction was not run (omit --physical-only or add --ai to enable)"
+      }
+    ]
+  }
+]

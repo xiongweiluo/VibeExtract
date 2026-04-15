@@ -90,7 +90,7 @@ export interface ShadowSpec {
 
 // ── Internal helpers ─────────────────────────────────────────────────────────
 
-function gcd(a: number, b: number): number {
+export function gcd(a: number, b: number): number {
   return b === 0 ? a : gcd(b, a % b);
 }
 
@@ -98,7 +98,7 @@ function gcd(a: number, b: number): number {
  * Snap a raw GCD to the nearest "standard" grid base (4 or 8).
  * Most design systems use one of these; avoid exotic bases like 3 or 7.
  */
-function snapToStandardBase(raw: number): number {
+export function snapToStandardBase(raw: number): number {
   if (raw <= 0)  return 4;
   if (raw <= 5)  return 4;
   if (raw <= 10) return 8;
@@ -106,14 +106,14 @@ function snapToStandardBase(raw: number): number {
   return raw;
 }
 
-function deriveBaseUnit(values: number[]): number {
+export function deriveBaseUnit(values: number[]): number {
   const candidates = values.filter(v => v >= 4 && v <= 32);
   if (candidates.length < 2) return 4;
   const rawGcd = candidates.reduce(gcd);
   return snapToStandardBase(rawGcd);
 }
 
-function buildSpacingSystem(rawValues: number[]): SpacingSystem {
+export function buildSpacingSystem(rawValues: number[]): SpacingSystem {
   const base = deriveBaseUnit(rawValues);
 
   // Snap every observed value to the nearest grid multiple, deduplicate
@@ -154,7 +154,7 @@ function buildSpacingSystem(rawValues: number[]): SpacingSystem {
   };
 }
 
-function assignRole(pxSize: number, baseBodyPx: number): string {
+export function assignRole(pxSize: number, baseBodyPx: number): string {
   const r = pxSize / baseBodyPx;
   if (r <= 0.75) return 'label';
   if (r <= 0.92) return 'body-sm';
@@ -168,13 +168,13 @@ function assignRole(pxSize: number, baseBodyPx: number): string {
   return 'display';
 }
 
-function toRem(px: number, rootPx: number): string {
+export function toRem(px: number, rootPx: number): string {
   const val = px / rootPx;
   // Format: trim trailing zeros, e.g. 1.000 → "1", 0.875000 → "0.875"
   return `${parseFloat(val.toFixed(4))}rem`;
 }
 
-function buildTypographyScale(
+export function buildTypographyScale(
   fontEntries: Array<[string, number]>,
   families: string[],
   rootFontSize: number,
@@ -226,7 +226,7 @@ function buildTypographyScale(
 
 // ── Browser evaluation script ────────────────────────────────────────────────
 
-interface RawBrowserData {
+export interface RawBrowserData {
   spacing:      number[];
   fonts:        Array<[string, number]>;
   families:     string[];
