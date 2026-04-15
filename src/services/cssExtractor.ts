@@ -226,6 +226,17 @@ export function buildTypographyScale(
 
 // ── Browser evaluation script ────────────────────────────────────────────────
 
+export interface ZIndexLayer {
+  /** Tag name or semantic role of the element (e.g. "nav", "div") */
+  role: string;
+  /** First two class tokens, for debugging (may be minified) */
+  className: string;
+  /** Resolved z-index integer */
+  zIndex: number;
+  /** CSS position value: fixed | absolute | sticky | relative */
+  position: string;
+}
+
 export interface RawBrowserData {
   spacing:      number[];
   fonts:        Array<[string, number]>;
@@ -240,6 +251,8 @@ export interface RawBrowserData {
   };
   /** Top box-shadow values sorted by frequency: [cssValue, elementCount] */
   shadows: Array<[string, number]>;
+  /** Z-index layers for overlay/nav elements, sorted highest → lowest */
+  zIndexLayers: ZIndexLayer[];
 }
 
 /**
@@ -349,12 +362,29 @@ function browserExtract(): RawBrowserData {
     heroCTACount = Math.min(ctaEls.length, 5);
   }
 
-  // — Cards
+  // — Helper: count grid columns robustly (handles minmax/fit-content values)
+  function countGridCols(gtc: string): number {
+    if (!gtc || gtc === 'none' || gtc === '') return 0;
+    let depth = 0, cols = 0, inToken = false;
+    for (const ch of gtc) {
+      if (ch === '(') { depth++; inToken = true; }
+      else if (ch === ')') { if (depth > 0) depth--; inToken = true; }
+      else if (ch === ' ' && depth === 0) { if (inToken) { cols++; inToken = false; } }
+      else { inToken = true; }
+    }
+    if (inToken) cols++;
+    return cols;
+  }
+
+  // — Cards: Path A (class-name based) + Path B (structural heuristic)
   let cardsPresent = false;
   let gridColumns  = 0;
   let hasShadow    = false;
+
+  // Path A: semantic / BEM class names
   const cardEls = document.querySelectorAll(
-    '[class*="card"], [class*="Card"], article, [class*="item"]',
+    '[class*="card"], [class*="Card"], article, [class*="item"],' +
+    '[class*="listing"], [class*="Listing"], [class*="result"], [class*="Result"]',
   );
   if (cardEls.length >= 2) {
     cardsPresent = true;
@@ -362,9 +392,9 @@ function browserExtract(): RawBrowserData {
     if (parent) {
       const ps = window.getComputedStyle(parent);
       if (ps.display === 'grid') {
-        gridColumns = ps.gridTemplateColumns.split(' ').filter(Boolean).length;
+        gridColumns = countGridCols(ps.gridTemplateColumns);
       } else if (ps.display === 'flex' && ps.flexWrap !== 'nowrap') {
-        const cardW  = (cardEls[0] as HTMLElement).offsetWidth || 0;
+        const cardW   = (cardEls[0] as HTMLElement).offsetWidth || 0;
         const parentW = (parent as HTMLElement).offsetWidth || 0;
         if (cardW > 0) gridColumns = Math.min(Math.floor(parentW / cardW), 6);
       }
@@ -374,6 +404,68 @@ function browserExtract(): RawBrowserData {
     hasShadow = cardStyle.boxShadow !== 'none' && cardStyle.boxShadow !== '';
   }
 
+  // Path B: structural heuristic scan — catches minified-class sites (e.g. Airbnb)
+  if (!cardsPresent || gridColumns < 2) {
+    const scanRoot = document.querySelector('main, [role="main"], #main, #content') ?? document.body;
+    const scanEls  = Array.from(scanRoot.querySelectorAll('div, section, ul, ol'));
+    const scanSeen = new WeakSet<Element>();
+    let bestScore  = 0;
+
+    for (const scanEl of scanEls.slice(0, 3000)) {
+      if (scanSeen.has(scanEl)) continue;
+      scanSeen.add(scanEl);
+
+      const scs  = window.getComputedStyle(scanEl);
+      const disp = scs.display;
+      if (disp !== 'grid' && disp !== 'flex') continue;
+      if (disp === 'flex' && scs.flexWrap === 'nowrap') continue;
+
+      const visKids = Array.from(scanEl.children).filter(ch => {
+        const cs2 = window.getComputedStyle(ch);
+        return cs2.display !== 'none' && cs2.visibility !== 'hidden' &&
+               (ch as HTMLElement).offsetWidth > 0;
+      });
+      if (visKids.length < 3) continue;
+
+      const sampleN = Math.min(visKids.length, 8);
+      const widths  = visKids.slice(0, sampleN).map(ch => (ch as HTMLElement).offsetWidth || 0);
+      const avgW    = widths.reduce((a, b) => a + b, 0) / widths.length;
+      if (avgW < 80) continue;
+      const varW = widths.reduce((a, w) => a + Math.abs(w - avgW), 0) / widths.length;
+      if (varW / avgW > 0.4) continue;
+
+      const heights = visKids.slice(0, sampleN).map(ch => (ch as HTMLElement).offsetHeight || 0);
+      const avgH    = heights.reduce((a, b) => a + b, 0) / heights.length;
+      if (avgH < 80) continue;
+
+      const richCount = visKids.slice(0, 8).filter(kid =>
+        kid.querySelector('img') ||
+        kid.querySelector('[style*="background"]') ||
+        window.getComputedStyle(kid).backgroundImage !== 'none',
+      ).length;
+      if (richCount < 2) continue;
+
+      let sCols = 0;
+      if (disp === 'grid') {
+        sCols = countGridCols(scs.gridTemplateColumns);
+      }
+      if (sCols < 2 && avgW > 0 && (scanEl as HTMLElement).offsetWidth > 0) {
+        const gap = parseFloat(scs.columnGap) || 0;
+        sCols = Math.min(Math.floor((scanEl as HTMLElement).offsetWidth / (avgW + gap + 1)), 8);
+        if (sCols < 2) sCols = Math.min(visKids.length, 6);
+      }
+
+      const score = richCount * visKids.length * Math.max(sCols, 1);
+      if (score > bestScore) {
+        bestScore    = score;
+        cardsPresent = true;
+        if (sCols > gridColumns) gridColumns = sCols;
+        const kidStyle = window.getComputedStyle(visKids[0]);
+        if (!hasShadow) hasShadow = kidStyle.boxShadow !== 'none' && kidStyle.boxShadow !== '';
+      }
+    }
+  }
+
   // — Footer
   const footerEl = document.querySelector('footer, [role="contentinfo"]');
   const footerPresent = !!footerEl;
@@ -381,7 +473,7 @@ function browserExtract(): RawBrowserData {
   if (footerEl) {
     const fs2 = window.getComputedStyle(footerEl);
     if (fs2.display === 'grid') {
-      footerColumns = fs2.gridTemplateColumns.split(' ').filter(Boolean).length;
+      footerColumns = countGridCols(fs2.gridTemplateColumns);
     } else if (fs2.display === 'flex') {
       footerColumns = Math.min(Array.from(footerEl.children).length, 6);
     } else {
@@ -530,6 +622,32 @@ function browserExtract(): RawBrowserData {
     }
   }
 
+  // ── Z-index layer map ────────────────────────────────────────────────────────
+  // Captures positioned overlay elements — crucial for sites with complex
+  // floating layers (e.g. Airbnb modals, sticky headers, dropdown menus).
+  const zIndexLayers: ZIndexLayer[] = [];
+  const zTargets = Array.from(document.querySelectorAll<Element>(
+    'nav, header, [class*="modal"], [class*="dialog"], [class*="overlay"], ' +
+    '[class*="dropdown"], [class*="popup"], [class*="tooltip"], ' +
+    '[class*="fixed"], [class*="sticky"], [class*="float"]',
+  )).slice(0, 40);
+  const zSeen = new Set<number>();
+  for (const zEl of zTargets) {
+    const zCss = window.getComputedStyle(zEl);
+    const zPos = zCss.position;
+    const zVal = zCss.zIndex;
+    if (zPos !== 'static' && zVal && zVal !== 'auto') {
+      const zInt = parseInt(zVal, 10);
+      if (!isNaN(zInt) && !zSeen.has(zInt)) {
+        zSeen.add(zInt);
+        const zRole = zEl.tagName.toLowerCase();
+        const zCls  = String((zEl as HTMLElement).className ?? '').trim().split(/\s+/).slice(0, 2).join(' ');
+        zIndexLayers.push({ role: zRole, className: zCls, zIndex: zInt, position: zPos });
+      }
+    }
+  }
+  zIndexLayers.sort((a, b) => b.zIndex - a.zIndex);
+
   return {
     spacing:      Array.from(spacingSet).sort((a, b) => a - b),
     fonts:        Array.from(fontMap.entries())
@@ -550,9 +668,10 @@ function browserExtract(): RawBrowserData {
       inlineSvgs: inlineSvgSrcs,
     },
     // Top 12 most-used shadows, sorted by frequency descending
-    shadows: Array.from(shadowMap.entries())
-               .sort((a, b) => b[1] - a[1])
-               .slice(0, 12),
+    shadows:      Array.from(shadowMap.entries())
+                    .sort((a, b) => b[1] - a[1])
+                    .slice(0, 12),
+    zIndexLayers: zIndexLayers.slice(0, 20),
   };
 }
 

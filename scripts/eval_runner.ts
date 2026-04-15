@@ -131,6 +131,23 @@ const BROWSER_EXTRACT_SCRIPT = `
   var fontMap    = new Map();
   var familySet  = new Set();
 
+  // ── Helper: count grid columns robustly (handles minmax/fit-content) ──────
+  function countGridCols(gtc) {
+    if (!gtc || gtc === 'none' || gtc === '') return 0;
+    // Walk the string counting top-level space-separated tokens
+    var depth = 0, cols = 0, inToken = false;
+    for (var ci = 0; ci < gtc.length; ci++) {
+      var ch = gtc[ci];
+      if (ch === '(') { depth++; inToken = true; }
+      else if (ch === ')') { if (depth > 0) depth--; inToken = true; }
+      else if (ch === ' ' && depth === 0) {
+        if (inToken) { cols++; inToken = false; }
+      } else { inToken = true; }
+    }
+    if (inToken) cols++;
+    return cols;
+  }
+
   var sample = Array.from(
     document.querySelectorAll(
       'h1,h2,h3,h4,h5,h6,p,a,button,label,li,span,div,section,article,header,nav,main,footer'
@@ -219,14 +236,21 @@ const BROWSER_EXTRACT_SCRIPT = `
   var cardsPresent  = false;
   var gridColumns   = 0;
   var hasShadow     = false;
-  var cardEls = document.querySelectorAll('[class*="card"], [class*="Card"], article, [class*="item"]');
+
+  // ── Path A: class-name heuristic (semantic / BEM class sites) ────────────
+  var cardEls = document.querySelectorAll(
+    '[class*="card"],[class*="Card"],article,[class*="item"],' +
+    'figure,[class*="photo"],[class*="tile"],[class*="grid-item"],' +
+    '[class*="listing"],[class*="Listing"],[class*="result"],[class*="Result"],' +
+    '[class*="masonry"],[class*="waterfall"],[class*="col"]'
+  );
   if (cardEls.length >= 2) {
     cardsPresent = true;
     var cardParent = cardEls[0].parentElement;
     if (cardParent) {
       var ps = window.getComputedStyle(cardParent);
       if (ps.display === 'grid') {
-        gridColumns = ps.gridTemplateColumns.split(' ').filter(Boolean).length;
+        gridColumns = countGridCols(ps.gridTemplateColumns);
       } else if (ps.display === 'flex' && ps.flexWrap !== 'nowrap') {
         var cardW   = cardEls[0].offsetWidth || 0;
         var parentW = cardParent.offsetWidth || 0;
@@ -238,13 +262,89 @@ const BROWSER_EXTRACT_SCRIPT = `
     hasShadow = cardStyle.boxShadow !== 'none' && cardStyle.boxShadow !== '';
   }
 
+  // ── Path B: structural grid sniffer (catches minified-class sites e.g. Airbnb) ──
+  // Finds grid/flex containers with repeated visually-rich children even when
+  // class names are hashed/minified and Path A yields nothing useful.
+  if (!cardsPresent || gridColumns < 2) {
+    // Prefer to search inside main content areas first, then fall back to whole DOM
+    var scanRoot = document.querySelector('main,[role="main"],#main,#content') || document.body;
+    var scanEls  = Array.from(scanRoot.querySelectorAll('div,section,ul,ol'));
+    var scanSeen = new Set();
+    var bestScore = 0;
+
+    for (var sci = 0; sci < Math.min(scanEls.length, 3000); sci++) {
+      var scanEl = scanEls[sci];
+      if (scanSeen.has(scanEl)) continue;
+      scanSeen.add(scanEl);
+
+      var scs  = window.getComputedStyle(scanEl);
+      var disp = scs.display;
+      if (disp !== 'grid' && disp !== 'flex') continue;
+      if (disp === 'flex' && scs.flexWrap === 'nowrap') continue;
+
+      // Only consider children that are visible and rendered
+      var visKids = Array.from(scanEl.children).filter(function(ch) {
+        var cs2 = window.getComputedStyle(ch);
+        return cs2.display !== 'none' && cs2.visibility !== 'hidden' && ch.offsetWidth > 0;
+      });
+      if (visKids.length < 3) continue;
+
+      // Measure width variance across up to 8 children
+      var sampleN = Math.min(visKids.length, 8);
+      var widths  = [];
+      for (var wi = 0; wi < sampleN; wi++) widths.push(visKids[wi].offsetWidth || 0);
+      var sumW = widths.reduce(function(a, b) { return a + b; }, 0);
+      var avgW = sumW / widths.length;
+      if (avgW < 80) continue;  // too narrow for cards
+      var varW = widths.reduce(function(a, w) { return a + Math.abs(w - avgW); }, 0) / widths.length;
+      if (varW / avgW > 0.4) continue;  // widths too uneven → not a uniform grid
+
+      // Height check: real cards are tall enough to hold content + image
+      var heights = [];
+      for (var hi = 0; hi < sampleN; hi++) heights.push(visKids[hi].offsetHeight || 0);
+      var avgH = heights.reduce(function(a, b) { return a + b; }, 0) / heights.length;
+      if (avgH < 80) continue;
+
+      // Richness check: children must contain images or bg-images (photo cards)
+      var richCount = 0;
+      for (var ri = 0; ri < Math.min(visKids.length, 8); ri++) {
+        var kid = visKids[ri];
+        if (kid.querySelector('img') ||
+            kid.querySelector('[style*="background"]') ||
+            window.getComputedStyle(kid).backgroundImage !== 'none') {
+          richCount++;
+        }
+      }
+      if (richCount < 2) continue;
+
+      // Derive column count
+      var sCols = 0;
+      if (disp === 'grid') {
+        sCols = countGridCols(scs.gridTemplateColumns);
+      }
+      if (sCols < 2 && avgW > 0 && scanEl.offsetWidth > 0) {
+        sCols = Math.min(Math.floor(scanEl.offsetWidth / (avgW + parseFloat(scs.columnGap) || 0 + 1)), 8);
+        if (sCols < 2) sCols = Math.min(visKids.length, 6);
+      }
+
+      var score = richCount * visKids.length * Math.max(sCols, 1);
+      if (score > bestScore) {
+        bestScore  = score;
+        cardsPresent = true;
+        if (sCols > gridColumns) gridColumns = sCols;
+        var kidStyle = window.getComputedStyle(visKids[0]);
+        if (!hasShadow) hasShadow = kidStyle.boxShadow !== 'none' && kidStyle.boxShadow !== '';
+      }
+    }
+  }
+
   var footerEl      = document.querySelector('footer, [role="contentinfo"]');
   var footerPresent = !!footerEl;
   var footerColumns = 0;
   if (footerEl) {
     var fs2 = window.getComputedStyle(footerEl);
     if (fs2.display === 'grid') {
-      footerColumns = fs2.gridTemplateColumns.split(' ').filter(Boolean).length;
+      footerColumns = countGridCols(fs2.gridTemplateColumns);
     } else if (fs2.display === 'flex') {
       footerColumns = Math.min(Array.from(footerEl.children).length, 6);
     } else {
@@ -283,9 +383,48 @@ const BROWSER_EXTRACT_SCRIPT = `
     });
   });
 
+  // Lazy-loaded images: data-src / data-srcset / data-original patterns
+  var lazyAttrs = ['data-src','data-lazy','data-lazy-src','data-original','data-hi-res'];
+  document.querySelectorAll('img').forEach(function(img) {
+    for (var lai = 0; lai < lazyAttrs.length; lai++) {
+      var lazySrc = img.getAttribute(lazyAttrs[lai]);
+      if (lazySrc && !lazySrc.startsWith('data:') && lazySrc.startsWith('http')) {
+        if (lazySrc.includes('.svg')) svgUrlSet.add(lazySrc);
+        else imageUrlSet.add(lazySrc);
+        break;
+      }
+    }
+    var lazySrcset = img.getAttribute('data-srcset') || '';
+    if (lazySrcset) {
+      lazySrcset.split(',').forEach(function(entry) {
+        var url = entry.trim().split(/\\s+/)[0];
+        if (url && url.startsWith('http') && !url.startsWith('data:')) imageUrlSet.add(url);
+      });
+    }
+  });
+
+  // <picture> source elements with data-srcset (responsive lazy-load)
+  document.querySelectorAll('picture source').forEach(function(srcEl) {
+    var attrs2 = ['srcset','data-srcset'];
+    for (var pai = 0; pai < attrs2.length; pai++) {
+      var pSrcset = srcEl.getAttribute(attrs2[pai]) || '';
+      if (pSrcset) {
+        pSrcset.split(',').forEach(function(entry) {
+          var url = entry.trim().split(/\\s+/)[0];
+          if (url && url.startsWith('http') && !url.startsWith('data:')) imageUrlSet.add(url);
+        });
+      }
+    }
+  });
+
   var bgTargets = Array.from(
-    document.querySelectorAll('[class*="hero"],[class*="banner"],[class*="cover"],[class*="bg"],section,header,main')
-  ).slice(0, 20);
+    document.querySelectorAll(
+      '[class*="hero"],[class*="banner"],[class*="cover"],[class*="bg"],' +
+      'figure,[class*="photo"],[class*="thumb"],[class*="thumbnail"],' +
+      '[class*="tile"],[class*="grid-item"],[class*="masonry"],[class*="waterfall"],' +
+      'section,header,main'
+    )
+  ).slice(0, 150);
 
   for (var bgi = 0; bgi < bgTargets.length; bgi++) {
     var bg = window.getComputedStyle(bgTargets[bgi]).backgroundImage;
@@ -343,6 +482,33 @@ const BROWSER_EXTRACT_SCRIPT = `
     }
   }
 
+  // ── Z-index layer map ─────────────────────────────────────────────────────
+  // Capture z-index of positioned overlay elements (nav, modals, dropdowns).
+  // Essential for sites like Airbnb with complex floating UI layers.
+  var zIndexLayers = [];
+  var zTargets = Array.from(document.querySelectorAll(
+    'nav, header, [class*="modal"], [class*="dialog"], [class*="overlay"],' +
+    '[class*="dropdown"], [class*="popup"], [class*="tooltip"],' +
+    '[class*="fixed"], [class*="sticky"], [class*="float"]'
+  )).slice(0, 40);
+  var zSeen = new Set();
+  for (var zii = 0; zii < zTargets.length; zii++) {
+    var zEl   = zTargets[zii];
+    var zCss  = window.getComputedStyle(zEl);
+    var zPos  = zCss.position;
+    var zVal  = zCss.zIndex;
+    if (zPos !== 'static' && zVal && zVal !== 'auto') {
+      var zInt = parseInt(zVal, 10);
+      if (!isNaN(zInt) && !zSeen.has(zInt)) {
+        zSeen.add(zInt);
+        var zRole  = zEl.tagName.toLowerCase();
+        var zCls   = String(zEl.className || '').trim().split(/\\s+/).slice(0, 2).join(' ');
+        zIndexLayers.push({ role: zRole, className: zCls, zIndex: zInt, position: zPos });
+      }
+    }
+  }
+  zIndexLayers.sort(function(a, b) { return b.zIndex - a.zIndex; });
+
   return {
     spacing:      Array.from(spacingSet).sort(function(a, b) { return a - b; }),
     fonts:        Array.from(fontMap.entries())
@@ -362,12 +528,40 @@ const BROWSER_EXTRACT_SCRIPT = `
       gradients:  gradients.slice(0, 10),
       inlineSvgs: inlineSvgSrcs
     },
-    shadows: Array.from(shadowMap.entries())
-               .sort(function(a, b) { return b[1] - a[1]; })
-               .slice(0, 12)
+    shadows:      Array.from(shadowMap.entries())
+                    .sort(function(a, b) { return b[1] - a[1]; })
+                    .slice(0, 12),
+    zIndexLayers: zIndexLayers.slice(0, 20)
   };
 })()
 `;
+
+// ─── Auto-scroll helper ────────────────────────────────────────────────────────
+// Scrolls the page incrementally to trigger lazy-loaded images.
+// Max 12 000 px scroll to avoid infinite pages; waits between steps for renders.
+
+async function autoScroll(page: Page, maxScrollPx = 12000, stepPx = 400, stepDelayMs = 150): Promise<void> {
+  await page.evaluate(
+    ({ max, step, delay }: { max: number; step: number; delay: number }) =>
+      new Promise<void>((resolve) => {
+        let scrolled = 0;
+        const tick = () => {
+          window.scrollBy(0, step);
+          scrolled += step;
+          if (scrolled >= max || scrolled >= document.documentElement.scrollHeight) {
+            window.scrollTo(0, 0);
+            resolve();
+          } else {
+            setTimeout(tick, delay);
+          }
+        };
+        tick();
+      }),
+    { max: maxScrollPx, step: stepPx, delay: stepDelayMs },
+  );
+  // Extra settle time so lazy images finish rendering
+  await page.waitForTimeout(1500);
+}
 
 // ─── Physical data processing ─────────────────────────────────────────────────
 
@@ -649,6 +843,10 @@ async function evalSite(
 
     // Let CSS-in-JS / deferred stylesheets settle
     await page.waitForTimeout(config.settleDelayMs);
+
+    // Auto-scroll to trigger lazy-loaded images and other deferred content
+    console.log('    [scroll] auto-scrolling to trigger lazy loads…');
+    await autoScroll(page);
 
     // Screenshot (needed even for physical-only: AI might be added later)
     console.log('    [screenshot] capturing…');
