@@ -22,127 +22,15 @@ function luminance(hex: string): number {
   return (0.299 * r + 0.587 * g + 0.114 * b) / 255;
 }
 
-/** Returns true when the page background is perceived as dark. */
 function isDarkSite(tokens: DesignTokens): boolean {
   return luminance(tokens.color.background.page) < 0.35;
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
-// § 3  Size helpers
-// ─────────────────────────────────────────────────────────────────────────────
-function parsePx(value: string): number {
-  const v = value.trim();
-  if (v.endsWith('rem')) return parseFloat(v) * 16;
-  if (v.endsWith('em'))  return parseFloat(v) * 16;
-  if (v.endsWith('px'))  return parseFloat(v);
-  const n = parseFloat(v);
-  return isNaN(n) ? 16 : n;
-}
-
-/** Scale a CSS size string down into a preview-appropriate px string. */
-function mockSize(value: string, scale: number): string {
-  return `${Math.max(Math.round(parsePx(value) * scale), 7)}px`;
-}
-
-// ─────────────────────────────────────────────────────────────────────────────
-// § 4  Physical-first token resolver  ★ core upgrade
-// ─────────────────────────────────────────────────────────────────────────────
-type ScaleKey = keyof DesignTokens['spacing']['scale'];
-
-/**
- * Maps semantic scale keys → possible Puppeteer-extracted role names.
- * Lets tok().fontSize() match physical measurements regardless of role naming.
- */
-const ROLE_ALIASES: Record<string, string[]> = {
-  '4xl': ['display', 'hero', 'h1', '4xl', 'jumbo'],
-  '3xl': ['title', 'h2', 'headline', '3xl'],
-  '2xl': ['subtitle', 'h3', 'subheading', '2xl'],
-  'xl':  ['h4', 'xl', 'section-title'],
-  'lg':  ['lead', 'lg', 'intro'],
-  'base':['body', 'base', 'p', 'paragraph'],
-  'sm':  ['small', 'sm', 'secondary'],
-  'xs':  ['caption', 'label', 'xs', 'meta', 'overline'],
-};
-
-/**
- * tok() returns a small resolver that always prefers Puppeteer-measured
- * physical values and falls back to the AI-semantic scale when absent.
- *
- * Usage inside a layout component:
- *   const t = tok(tokens);
- *   fontSize: mockSize(t.fs('4xl'), scale)
- *   paddingTop: Math.round(t.spN('md') * gap)
- */
-function tok(tokens: DesignTokens) {
-  const sp = tokens.spacingSystem;
-  const ts = tokens.typographyScale;
-
-  /** Physical-first spacing → CSS px string */
-  function sp_(key: ScaleKey): string {
-    return sp ? sp.named[key] : tokens.spacing.scale[key];
-  }
-
-  /** Numeric px value of a spacing token (for arithmetic) */
-  function spN(key: ScaleKey): number {
-    return parsePx(sp_(key));
-  }
-
-  /** Physical-first font-size → CSS px string */
-  function fs(key: string): string {
-    if (ts) {
-      const aliases = ROLE_ALIASES[key] ?? [key];
-      const step = ts.steps.find(s => aliases.includes(s.role));
-      if (step) return step.px;
-    }
-    const map: Record<string, string | undefined> = {
-      xs:    tokens.typography.scale.xs.size,
-      sm:    tokens.typography.scale.sm.size,
-      base:  tokens.typography.scale.base.size,
-      lg:    tokens.typography.scale.lg.size,
-      xl:    tokens.typography.scale.xl.size,
-      '2xl': tokens.typography.scale['2xl'].size,
-      '3xl': tokens.typography.scale['3xl'].size,
-      '4xl': tokens.typography.scale['4xl'].size,
-    };
-    return map[key] ?? tokens.typography.scale.base.size;
-  }
-
-  /** Physical-first line-height → unitless string */
-  function lh(key: string): string {
-    if (ts) {
-      const aliases = ROLE_ALIASES[key] ?? [key];
-      const step = ts.steps.find(s => aliases.includes(s.role));
-      if (step) return step.lineHeight;
-    }
-    const map: Record<string, string | undefined> = {
-      xs:    tokens.typography.scale.xs.lineHeight,
-      sm:    tokens.typography.scale.sm.lineHeight,
-      base:  tokens.typography.scale.base.lineHeight,
-      lg:    tokens.typography.scale.lg.lineHeight,
-      xl:    tokens.typography.scale.xl.lineHeight,
-      '2xl': tokens.typography.scale['2xl'].lineHeight,
-      '3xl': tokens.typography.scale['3xl'].lineHeight,
-      '4xl': tokens.typography.scale['4xl'].lineHeight,
-    };
-    return map[key] ?? '1.5';
-  }
-
-  return { sp: sp_, spN, fs, lh };
-}
-
-/** Density → gap multiplier for the mini preview. */
-const D: Record<string, number> = { compact: 0.6, comfortable: 1, spacious: 1.45 };
-
-// ─────────────────────────────────────────────────────────────────────────────
-// § 4b  Smooth layered shadows  ★ replaces flat single-layer shadows
+// § 3  Smooth layered shadows
 // ─────────────────────────────────────────────────────────────────────────────
 type ShadowDepth = 'flat' | 'subtle' | 'medium' | 'deep' | 'dramatic';
 
-/**
- * Generates a multi-layer box-shadow string for natural depth.
- * Each successive layer is larger and more diffuse, mimicking real light physics.
- * colorHex tints the shadow (useful for dark/branded surfaces).
- */
 function layeredShadow(depth: ShadowDepth, colorHex = '#000000'): string {
   const h = colorHex.replace('#', '');
   const r = parseInt(h.substring(0, 2), 16) || 0;
@@ -158,7 +46,6 @@ function layeredShadow(depth: ShadowDepth, colorHex = '#000000'): string {
   }
 }
 
-/** Derive shadow depth from SiteArchitecture: expressive+spacious → deeper. */
 function archShadowDepth(tokens: DesignTokens, role: 'card' | 'btn' | 'hover' = 'card'): ShadowDepth {
   const { density, visualWeight: { hierarchy } } = tokens.siteArchitecture;
   if (hierarchy === 'functional' || density === 'compact') return role === 'btn' ? 'flat' : 'subtle';
@@ -166,103 +53,12 @@ function archShadowDepth(tokens: DesignTokens, role: 'card' | 'btn' | 'hover' = 
   return role === 'btn' ? 'subtle' : 'medium';
 }
 
-/** Shadow tint color: on dark sites, blend brand primary; on light sites, pure black. */
 function shadowTint(tokens: DesignTokens): string {
   return isDarkSite(tokens) ? tokens.color.brand.primary : '#000000';
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
-// § 4c  Paradigm-aware copy  ★ eliminates Lorem Ipsum
-// ─────────────────────────────────────────────────────────────────────────────
-interface ParadigmCopy { primaryCta: string; secondaryCta: string; tagline: string; cardVerb: string }
-
-function paradigmCopy(tokens: DesignTokens): ParadigmCopy {
-  const { paradigm } = tokens.siteArchitecture;
-  // Prefer extracted headline as tagline when it reads like a tagline (short)
-  const extracted = tokens.skeleton.hero.headline;
-  const tagline = extracted && extracted.length < 60 ? extracted : undefined;
-  const map: Record<string, ParadigmCopy> = {
-    'landing':      { primaryCta:'Get started',    secondaryCta:'Learn more',     tagline: tagline ?? 'Built for the next generation.',   cardVerb:'Explore' },
-    'portfolio':    { primaryCta:'View work',       secondaryCta:'Contact me',     tagline: tagline ?? 'Design that speaks for itself.',    cardVerb:'Open' },
-    'e-commerce':   { primaryCta:'Shop now',        secondaryCta:'View all',       tagline: tagline ?? 'Curated for the discerning.',       cardVerb:'Add to bag' },
-    'social-feed':  { primaryCta:'Follow',          secondaryCta:'Explore',        tagline: tagline ?? 'Share your perspective.',           cardVerb:'Like' },
-    'content-site': { primaryCta:'Read more',       secondaryCta:'Subscribe',      tagline: tagline ?? 'Words that move the world.',        cardVerb:'Continue' },
-    'docs':         { primaryCta:'Get started',     secondaryCta:'View examples',  tagline: tagline ?? 'Everything you need to build.',     cardVerb:'Read docs' },
-    'dashboard':    { primaryCta:'Open app',        secondaryCta:'View demo',      tagline: tagline ?? 'Data at a glance.',                 cardVerb:'Details' },
-    'saas-app':     { primaryCta:'Start free trial',secondaryCta:'See pricing',    tagline: tagline ?? 'The platform teams rely on.',       cardVerb:'Open' },
-  };
-  return map[paradigm] ?? map['landing'];
-}
-
-// ─────────────────────────────────────────────────────────────────────────────
-// § 4d  Golden-ratio line-height  ★ font rendering quality
-// ─────────────────────────────────────────────────────────────────────────────
-/**
- * Derives an optically balanced line-height for a given CSS font-size.
- * Large headings: tight (≈ 1.1). Body copy: golden ratio (1.618). Caption: 1.4.
- * Formula: clamp(1.1, 1.1 + (16/px) * 0.5, 1.618)
- */
-function goldenLH(fontSizeCss: string): string {
-  const px = Math.max(parsePx(fontSizeCss), 8);
-  return Math.min(1.618, Math.max(1.1, 1.1 + (16 / px) * 0.5)).toFixed(3);
-}
-
-// ─────────────────────────────────────────────────────────────────────────────
-// § 4e  Unsplash keyword images  ★ replaces grey placeholder blocks
-// ─────────────────────────────────────────────────────────────────────────────
-/**
- * Per-paradigm Unsplash keyword strings.
- * Grid / masonry sites → landscape · art · nature
- * Landing / tech sites → technology · workspace · office
- * source.unsplash.com/?keywords&sig=N  (sig disambiguates image slot)
- */
-const UNSPLASH_KW: Record<string, string> = {
-  'e-commerce':   'fashion,product,lifestyle',
-  'social-feed':  'photography,nature,art',
-  'portfolio':    'design,art,creative,minimal',
-  'landing':      'technology,workspace,modern',
-  'content-site': 'editorial,minimal,nature',
-  'docs':         'technology,abstract,code',
-  'dashboard':    'city,architecture,abstract',
-  'saas-app':     'technology,office,workspace',
-};
-
-function UnsplashImg({
-  tokens, seed, width, height, style,
-}: {
-  tokens: DesignTokens; seed: number; width: number; height: number; style?: React.CSSProperties;
-}) {
-  const [loaded, setLoaded] = useState(false);
-  const [error,  setError]  = useState(false);
-  const c  = tokens.color;
-  const kw = UNSPLASH_KW[tokens.siteArchitecture.paradigm] ?? 'minimal,modern';
-  // source.unsplash.com is the keyword-redirect API (no auth key needed for demos).
-  // Replace with official Unsplash API + accessKey for production use.
-  const src = `https://source.unsplash.com/${width}x${height}/?${kw}&sig=${seed}`;
-
-  return (
-    <div style={{ position:'relative', width:'100%', height:'100%', overflow:'hidden', ...style }}>
-      {!error && (
-        /* eslint-disable-next-line @next/next/no-img-element */
-        <img src={src} alt="" draggable={false}
-          onLoad={() => setLoaded(true)} onError={() => setError(true)}
-          style={{ position:'absolute', inset:0, width:'100%', height:'100%', objectFit:'cover', opacity: loaded ? 1 : 0, transition:'opacity 0.5s ease' }}
-        />
-      )}
-      {/* Shimmer skeleton while loading */}
-      {!loaded && !error && (
-        <div style={{ position:'absolute', inset:0, background:`linear-gradient(90deg, ${c.background.surface} 0%, ${c.brand.primary}14 50%, ${c.background.surface} 100%)`, backgroundSize:'200% 100%', animation:'shimmer 1.6s ease-in-out infinite' }} />
-      )}
-      {/* Gradient fallback on error */}
-      {error && (
-        <div style={{ position:'absolute', inset:0, background:`linear-gradient(135deg, ${c.brand.primary}25, ${c.brand.secondary}14, ${c.brand.accent}18)`, display:'flex', alignItems:'center', justifyContent:'center', fontSize:14, color:c.brand.primary, opacity:0.45 }}>▣</div>
-      )}
-    </div>
-  );
-}
-
-// ─────────────────────────────────────────────────────────────────────────────
-// § 5  Export utilities  (CSS vars · Tailwind · JSON)
+// § 4  Export utilities  (CSS vars · Tailwind · JSON)
 // ─────────────────────────────────────────────────────────────────────────────
 function buildCSSVars(t: DesignTokens): string {
   const lines = [':root {',
@@ -360,7 +156,7 @@ function downloadJSON(t: DesignTokens, siteUrl: string): void {
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
-// § 6  Shared interactive primitives
+// § 5  Shared interactive primitives
 // ─────────────────────────────────────────────────────────────────────────────
 
 function ColorSwatch({ label, value }: { label: string; value: string }) {
@@ -465,7 +261,6 @@ function HoverCard({
         transform: hovered && !disabled
           ? 'translateY(-3px) scale(1.012)'
           : 'translateY(0) scale(1)',
-        // Frosted glass on dark sites when hovered
         backdropFilter: hovered && !disabled && dark ? 'blur(6px) saturate(140%)' : 'none',
         WebkitBackdropFilter: hovered && !disabled && dark ? 'blur(6px) saturate(140%)' : 'none',
         transition: [
@@ -509,655 +304,593 @@ function FocusInput({
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
-// § 7  Layout building blocks  (NavBar · FooterBlock · NavItem · SidebarItem)
+// § 6  Blueprint CSS variable map
+//
+//  Maps DesignTokens hex values onto the CSS variable names that the AI
+//  extractor writes into uiBlueprint Tailwind classes (e.g. bg-[var(--color-bg-page)]).
+//  Injected as an inline style object on the root wrapper so that all
+//  arbitrary-value classes referencing var(--color-*) resolve correctly.
 // ─────────────────────────────────────────────────────────────────────────────
-
-function NavItem({ label, color, hoverColor, radius }: { label: string; color: string; hoverColor: string; radius: string }) {
-  const [hovered, setHovered] = useState(false);
-  return (
-    <span
-      style={{
-        color: hovered ? hoverColor : color, fontSize: 9, fontFamily: monoFont,
-        padding: '2px 5px', borderRadius: radius,
-        background: hovered ? 'rgba(255,255,255,.1)' : 'transparent',
-        transition: 'color 0.15s, background 0.15s', cursor: 'pointer',
-      }}
-      onMouseEnter={() => setHovered(true)} onMouseLeave={() => setHovered(false)}
-    >
-      {label}
-    </span>
-  );
-}
-
-function NavBar({ tokens, transparent }: { tokens: DesignTokens; transparent?: boolean }) {
-  const c = tokens.color;
-  const ty = tokens.typography;
-  const r  = tokens.radius;
-  const brand = tokens.skeleton.nav.brand || 'Brand';
-  const items = tokens.skeleton.nav.items.length > 0
-    ? tokens.skeleton.nav.items.slice(0, 4)
-    : ['Product', 'Docs', 'Pricing'];
-
-  // Visual-weight-aware nav background
-  const dark  = isDarkSite(tokens);
-  const bg    = transparent ? 'transparent' : c.brand.primary;
-  const fgBrand = transparent ? c.text.primary : c.text.inverse;
-  const fgItem  = transparent ? c.text.secondary : `${c.text.inverse}bb`;
-  const hoverFg = transparent ? c.text.primary : c.text.inverse;
-
-  return (
-    <nav style={{
-      background: bg, display:'flex', alignItems:'center', justifyContent:'space-between',
-      padding:'7px 14px', flexShrink:0,
-      borderBottom: transparent ? `1px solid ${c.border}` : 'none',
-      boxShadow: transparent ? 'none' : tokens.shadow.sm,
-    }}>
-      <span style={{ fontWeight: ty.weights.bold, color: fgBrand, fontSize:11, fontFamily: ty.families.body, letterSpacing:'-0.01em' }}>
-        {brand}
-      </span>
-      <div style={{ display:'flex', gap:10 }}>
-        {items.map(l => (
-          <NavItem key={l} label={l} color={fgItem} hoverColor={hoverFg} radius={r.sm} />
-        ))}
-      </div>
-      {/* CTA pill */}
-      <div style={{ padding:'3px 8px', borderRadius: r.full, background: transparent ? c.brand.primary : `${c.text.inverse}22`, fontSize:8, fontFamily: monoFont, color: transparent ? c.text.inverse : c.text.inverse, cursor:'pointer', display: dark && !transparent ? 'none' : 'block' }}>
-        {tokens.skeleton.hero.ctaCount > 0 ? 'Get started' : ''}
-      </div>
-    </nav>
-  );
-}
-
-function FooterBlock({ tokens }: { tokens: DesignTokens }) {
-  if (!tokens.skeleton.footer.present) return null;
-  const c  = tokens.color;
-  const ty = tokens.typography;
-  const cols = Math.min(Math.max(tokens.skeleton.footer.columns, 1), 4);
-  const colLabels = ['Product', 'Company', 'Resources', 'Legal'];
-
-  return (
-    <div style={{ background: c.background.surface, borderTop: `1px solid ${c.border}`, padding: '6px 14px 8px', flexShrink: 0 }}>
-      <div style={{ display: 'grid', gridTemplateColumns: `repeat(${cols}, 1fr)`, gap: 8 }}>
-        {Array.from({ length: cols }, (_, i) => (
-          <div key={i} style={{ display: 'flex', flexDirection: 'column', gap: 3 }}>
-            <span style={{ fontSize: 8, fontWeight: ty.weights.bold, color: c.text.primary, fontFamily: ty.families.body }}>
-              {colLabels[i] ?? 'Links'}
-            </span>
-            {['Overview','About','Blog','Terms'].slice(0, 3).map(link => (
-              <span key={link} style={{ fontSize: 7, color: c.text.secondary, fontFamily: ty.families.body }}>— {link}</span>
-            ))}
-          </div>
-        ))}
-      </div>
-    </div>
-  );
+function blueprintCSSVars(tokens: DesignTokens): React.CSSProperties {
+  return {
+    '--color-bg-page':        tokens.color.background.page,
+    '--color-bg-surface':     tokens.color.background.surface,
+    '--color-text-primary':   tokens.color.text.primary,
+    '--color-text-secondary': tokens.color.text.secondary,
+    '--color-text-inverse':   tokens.color.text.inverse,
+    '--color-brand-primary':  tokens.color.brand.primary,
+    '--color-brand-secondary':tokens.color.brand.secondary,
+    '--color-brand-accent':   tokens.color.brand.accent,
+    '--color-border-default': tokens.color.border,
+    '--color-status-success': tokens.color.status.success,
+    '--color-status-warning': tokens.color.status.warning,
+    '--color-status-error':   tokens.color.status.error,
+  } as React.CSSProperties;
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
-// § 8  VisualAccent — adapts to visualWeight.dominant  ★ new
+// § 7  Tailwind arbitrary-value → React.CSSProperties converter
+//
+//  Converts the Tailwind utility strings emitted by the AI extractor into
+//  inline React styles so the preview renders correctly without a JIT pass.
+//
+//  Handles:
+//   • Arbitrary values:  px-[48px]  gap-[32px]  text-[14px]  z-[100]
+//   • CSS-var references: bg-[var(--color-bg-page)]  text-[var(--color-text-primary)]
+//   • Standard scale utilities: flex, grid-cols-3, items-center, etc.
+//   • Responsive / pseudo prefixes (md:, hover:, …) are stripped — only base
+//     styles are applied, which is sufficient for the static mini-preview.
 // ─────────────────────────────────────────────────────────────────────────────
+function twToStyle(
+  classes: string,
+  opts: { sanitizePosition?: boolean } = {},
+): React.CSSProperties {
+  const style: React.CSSProperties = {};
+  if (!classes) return style;
+
+  for (const cls of classes.trim().split(/\s+/)) {
+    if (!cls) continue;
+    // Strip responsive / state prefixes (md:, hover:, focus:, dark:, …)
+    const base = cls.replace(/^[a-z-]+:/, '');
+
+    // ── Helpers ────────────────────────────────────────────────────────────
+    /** Extract arbitrary value from `prefix-[value]`, decode underscores. */
+    const arb = (prefix: string): string | null => {
+      if (!base.startsWith(prefix + '[') || !base.endsWith(']')) return null;
+      return base.slice(prefix.length + 1, -1).replace(/_/g, ' ');
+    };
+    /** Tailwind default scale: gap-4 → 16px */
+    const scale = (prefix: string): string | null => {
+      if (!base.startsWith(prefix)) return null;
+      const n = parseFloat(base.slice(prefix.length));
+      return isNaN(n) ? null : `${n * 4}px`;
+    };
+
+    // ── Display ────────────────────────────────────────────────────────────
+    if (base === 'flex')         { style.display = 'flex';         continue; }
+    if (base === 'inline-flex')  { style.display = 'inline-flex';  continue; }
+    if (base === 'grid')         { style.display = 'grid';         continue; }
+    if (base === 'block')        { style.display = 'block';        continue; }
+    if (base === 'inline-block') { style.display = 'inline-block'; continue; }
+    if (base === 'inline')       { style.display = 'inline';       continue; }
+    if (base === 'hidden')       { style.display = 'none';         continue; }
+
+    // ── Flex direction / wrap / grow / shrink ──────────────────────────────
+    if (base === 'flex-col')         { style.flexDirection = 'column';         continue; }
+    if (base === 'flex-row')         { style.flexDirection = 'row';            continue; }
+    if (base === 'flex-col-reverse') { style.flexDirection = 'column-reverse'; continue; }
+    if (base === 'flex-row-reverse') { style.flexDirection = 'row-reverse';    continue; }
+    if (base === 'flex-wrap')        { style.flexWrap = 'wrap';                continue; }
+    if (base === 'flex-nowrap')      { style.flexWrap = 'nowrap';              continue; }
+    if (base === 'flex-1')           { style.flex = '1 1 0%';                  continue; }
+    if (base === 'flex-auto')        { style.flex = '1 1 auto';                continue; }
+    if (base === 'flex-none')        { style.flex = 'none';                    continue; }
+    if (base === 'flex-shrink-0' || base === 'shrink-0') { style.flexShrink = 0; continue; }
+    if (base === 'shrink')           { style.flexShrink = 1;                   continue; }
+    if (base === 'grow')             { style.flexGrow = 1;                     continue; }
+    if (base === 'grow-0')           { style.flexGrow = 0;                     continue; }
+
+    // ── Alignment ──────────────────────────────────────────────────────────
+    if (base === 'items-center')   { style.alignItems = 'center';        continue; }
+    if (base === 'items-start')    { style.alignItems = 'flex-start';    continue; }
+    if (base === 'items-end')      { style.alignItems = 'flex-end';      continue; }
+    if (base === 'items-stretch')  { style.alignItems = 'stretch';       continue; }
+    if (base === 'items-baseline') { style.alignItems = 'baseline';      continue; }
+    if (base === 'justify-center')  { style.justifyContent = 'center';        continue; }
+    if (base === 'justify-between') { style.justifyContent = 'space-between'; continue; }
+    if (base === 'justify-start')   { style.justifyContent = 'flex-start';    continue; }
+    if (base === 'justify-end')     { style.justifyContent = 'flex-end';      continue; }
+    if (base === 'justify-around')  { style.justifyContent = 'space-around';  continue; }
+    if (base === 'justify-evenly')  { style.justifyContent = 'space-evenly';  continue; }
+    if (base === 'self-center')  { style.alignSelf = 'center';     continue; }
+    if (base === 'self-start')   { style.alignSelf = 'flex-start'; continue; }
+    if (base === 'self-end')     { style.alignSelf = 'flex-end';   continue; }
+    if (base === 'self-stretch') { style.alignSelf = 'stretch';    continue; }
+
+    // ── Grid ───────────────────────────────────────────────────────────────
+    {
+      const a = arb('grid-cols-');
+      if (a !== null) {
+        // grid-cols-[3] → repeat(3, minmax(0,1fr))  or  grid-cols-[repeat(3,1fr)] passthrough
+        const n = parseInt(a);
+        style.gridTemplateColumns = !isNaN(n) && String(n) === a
+          ? `repeat(${n}, minmax(0, 1fr))`
+          : a;
+        continue;
+      }
+      const m = base.match(/^grid-cols-(\d+)$/);
+      if (m) { style.gridTemplateColumns = `repeat(${m[1]}, minmax(0, 1fr))`; continue; }
+      const cs = base.match(/^col-span-(\d+)$/); if (cs) { style.gridColumn = `span ${cs[1]} / span ${cs[1]}`; continue; }
+      const rs = base.match(/^row-span-(\d+)$/); if (rs) { style.gridRow    = `span ${rs[1]} / span ${rs[1]}`; continue; }
+      const gr = arb('grid-rows-');
+      if (gr !== null) { style.gridTemplateRows = gr; continue; }
+    }
+
+    // ── Gap ────────────────────────────────────────────────────────────────
+    { const a = arb('gap-');   if (a !== null) { style.gap      = a; continue; } }
+    { const a = arb('gap-x-'); if (a !== null) { style.columnGap = a; continue; } }
+    { const a = arb('gap-y-'); if (a !== null) { style.rowGap    = a; continue; } }
+    { const s = scale('gap-'); if (s !== null) { style.gap      = s; continue; } }
+
+    // ── Width / Height ─────────────────────────────────────────────────────
+    if (base === 'w-full')   { style.width  = '100%';  continue; }
+    if (base === 'w-screen') { style.width  = '100vw'; continue; }
+    if (base === 'h-full')   { style.height = '100%';  continue; }
+    if (base === 'h-screen') { style.height = '100vh'; continue; }
+    if (base === 'w-auto')   { style.width  = 'auto';  continue; }
+    if (base === 'h-auto')   { style.height = 'auto';  continue; }
+    { const a = arb('w-');     if (a !== null) { style.width     = a; continue; } }
+    { const a = arb('h-');     if (a !== null) { style.height    = a; continue; } }
+    { const a = arb('min-w-'); if (a !== null) { style.minWidth  = a; continue; } }
+    { const a = arb('min-h-'); if (a !== null) { style.minHeight = a; continue; } }
+    { const a = arb('max-w-'); if (a !== null) { style.maxWidth  = a; continue; } }
+    { const a = arb('max-h-'); if (a !== null) { style.maxHeight = a; continue; } }
+
+    // ── Padding ────────────────────────────────────────────────────────────
+    { const a = arb('p-');  if (a !== null) { style.padding       = a; continue; } }
+    { const a = arb('px-'); if (a !== null) { style.paddingLeft   = a; style.paddingRight  = a; continue; } }
+    { const a = arb('py-'); if (a !== null) { style.paddingTop    = a; style.paddingBottom = a; continue; } }
+    { const a = arb('pt-'); if (a !== null) { style.paddingTop    = a; continue; } }
+    { const a = arb('pb-'); if (a !== null) { style.paddingBottom = a; continue; } }
+    { const a = arb('pl-'); if (a !== null) { style.paddingLeft   = a; continue; } }
+    { const a = arb('pr-'); if (a !== null) { style.paddingRight  = a; continue; } }
+    { const s = scale('p-');  if (s !== null) { style.padding       = s; continue; } }
+    { const s = scale('px-'); if (s !== null) { style.paddingLeft   = s; style.paddingRight  = s; continue; } }
+    { const s = scale('py-'); if (s !== null) { style.paddingTop    = s; style.paddingBottom = s; continue; } }
+    { const s = scale('pt-'); if (s !== null) { style.paddingTop    = s; continue; } }
+    { const s = scale('pb-'); if (s !== null) { style.paddingBottom = s; continue; } }
+    { const s = scale('pl-'); if (s !== null) { style.paddingLeft   = s; continue; } }
+    { const s = scale('pr-'); if (s !== null) { style.paddingRight  = s; continue; } }
+
+    // ── Margin ─────────────────────────────────────────────────────────────
+    if (base === 'mx-auto') { style.marginLeft = 'auto'; style.marginRight = 'auto'; continue; }
+    if (base === 'my-auto') { style.marginTop  = 'auto'; style.marginBottom = 'auto'; continue; }
+    { const a = arb('m-');  if (a !== null) { style.margin        = a; continue; } }
+    { const a = arb('mx-'); if (a !== null) { style.marginLeft    = a; style.marginRight  = a; continue; } }
+    { const a = arb('my-'); if (a !== null) { style.marginTop     = a; style.marginBottom = a; continue; } }
+    { const a = arb('mt-'); if (a !== null) { style.marginTop     = a; continue; } }
+    { const a = arb('mb-'); if (a !== null) { style.marginBottom  = a; continue; } }
+    { const a = arb('ml-'); if (a !== null) { style.marginLeft    = a; continue; } }
+    { const a = arb('mr-'); if (a !== null) { style.marginRight   = a; continue; } }
+    { const s = scale('m-');  if (s !== null) { style.margin        = s; continue; } }
+    { const s = scale('mt-'); if (s !== null) { style.marginTop     = s; continue; } }
+    { const s = scale('mb-'); if (s !== null) { style.marginBottom  = s; continue; } }
+
+    // ── Background ─────────────────────────────────────────────────────────
+    {
+      const a = arb('bg-');
+      if (a !== null) {
+        if (a.startsWith('linear-gradient') || a.startsWith('radial-gradient') || a.startsWith('conic-gradient')) {
+          style.background = a;
+        } else {
+          style.backgroundColor = a;
+        }
+        continue;
+      }
+    }
+    if (base === 'bg-transparent') { style.backgroundColor = 'transparent'; continue; }
+    if (base === 'bg-white')       { style.backgroundColor = '#fff';         continue; }
+    if (base === 'bg-black')       { style.backgroundColor = '#000';         continue; }
+
+    // ── Text colour & size ─────────────────────────────────────────────────
+    {
+      const a = arb('text-');
+      if (a !== null) {
+        if (a.startsWith('var(') || a.startsWith('#') || a.startsWith('rgb') || a.startsWith('hsl')) {
+          style.color = a;
+        } else if (/^\d/.test(a)) {
+          style.fontSize = a;
+        } else {
+          // Named Tailwind colour like "gray-500" — skip gracefully
+        }
+        continue;
+      }
+    }
+    if (base === 'text-center')      { style.textAlign = 'center'; continue; }
+    if (base === 'text-left')        { style.textAlign = 'left';   continue; }
+    if (base === 'text-right')       { style.textAlign = 'right';  continue; }
+    if (base === 'text-white')       { style.color = '#fff';        continue; }
+    if (base === 'text-black')       { style.color = '#000';        continue; }
+    // Standard text-size tokens
+    if (base === 'text-xs')   { style.fontSize = '0.75rem'; continue; }
+    if (base === 'text-sm')   { style.fontSize = '0.875rem'; continue; }
+    if (base === 'text-base') { style.fontSize = '1rem';    continue; }
+    if (base === 'text-lg')   { style.fontSize = '1.125rem'; continue; }
+    if (base === 'text-xl')   { style.fontSize = '1.25rem'; continue; }
+    if (base === 'text-2xl')  { style.fontSize = '1.5rem';  continue; }
+    if (base === 'text-3xl')  { style.fontSize = '1.875rem'; continue; }
+    if (base === 'text-4xl')  { style.fontSize = '2.25rem'; continue; }
+
+    // ── Font weight / family ───────────────────────────────────────────────
+    {
+      const a = arb('font-');
+      if (a !== null) {
+        const n = parseFloat(a);
+        if (!isNaN(n) && String(n) === a) {
+          style.fontWeight = n as React.CSSProperties['fontWeight'];
+        } else {
+          style.fontFamily = a;
+        }
+        continue;
+      }
+    }
+    if (base === 'font-thin')      { style.fontWeight = 100; continue; }
+    if (base === 'font-light')     { style.fontWeight = 300; continue; }
+    if (base === 'font-normal')    { style.fontWeight = 400; continue; }
+    if (base === 'font-medium')    { style.fontWeight = 500; continue; }
+    if (base === 'font-semibold')  { style.fontWeight = 600; continue; }
+    if (base === 'font-bold')      { style.fontWeight = 700; continue; }
+    if (base === 'font-extrabold') { style.fontWeight = 800; continue; }
+    if (base === 'font-black')     { style.fontWeight = 900; continue; }
+
+    // ── Line height ────────────────────────────────────────────────────────
+    { const a = arb('leading-'); if (a !== null) { style.lineHeight = a; continue; } }
+    if (base === 'leading-none')   { style.lineHeight = '1';     continue; }
+    if (base === 'leading-tight')  { style.lineHeight = '1.25';  continue; }
+    if (base === 'leading-snug')   { style.lineHeight = '1.375'; continue; }
+    if (base === 'leading-normal') { style.lineHeight = '1.5';   continue; }
+    if (base === 'leading-relaxed'){ style.lineHeight = '1.625'; continue; }
+    if (base === 'leading-loose')  { style.lineHeight = '2';     continue; }
+
+    // ── Letter spacing ─────────────────────────────────────────────────────
+    { const a = arb('tracking-'); if (a !== null) { style.letterSpacing = a; continue; } }
+    if (base === 'tracking-tighter') { style.letterSpacing = '-0.05em';  continue; }
+    if (base === 'tracking-tight')   { style.letterSpacing = '-0.025em'; continue; }
+    if (base === 'tracking-normal')  { style.letterSpacing = '0';        continue; }
+    if (base === 'tracking-wide')    { style.letterSpacing = '0.025em';  continue; }
+    if (base === 'tracking-wider')   { style.letterSpacing = '0.05em';   continue; }
+    if (base === 'tracking-widest')  { style.letterSpacing = '0.1em';    continue; }
+
+    // ── Text transform / whitespace ────────────────────────────────────────
+    if (base === 'uppercase')        { style.textTransform = 'uppercase'; continue; }
+    if (base === 'lowercase')        { style.textTransform = 'lowercase'; continue; }
+    if (base === 'capitalize')       { style.textTransform = 'capitalize'; continue; }
+    if (base === 'truncate')         { style.overflow = 'hidden'; style.textOverflow = 'ellipsis'; style.whiteSpace = 'nowrap'; continue; }
+    if (base === 'whitespace-nowrap'){ style.whiteSpace = 'nowrap';  continue; }
+    if (base === 'whitespace-normal'){ style.whiteSpace = 'normal';  continue; }
+    if (base === 'whitespace-pre')   { style.whiteSpace = 'pre';     continue; }
+    if (base === 'break-words')      { style.wordBreak  = 'break-word'; continue; }
+
+    // ── Border ─────────────────────────────────────────────────────────────
+    if (base === 'border')   { style.borderWidth = '1px'; style.borderStyle = 'solid'; continue; }
+    if (base === 'border-0') { style.border = 'none'; continue; }
+    if (base === 'border-t') { style.borderTopWidth    = '1px'; style.borderTopStyle    = 'solid'; continue; }
+    if (base === 'border-b') { style.borderBottomWidth = '1px'; style.borderBottomStyle = 'solid'; continue; }
+    if (base === 'border-l') { style.borderLeftWidth   = '1px'; style.borderLeftStyle   = 'solid'; continue; }
+    if (base === 'border-r') { style.borderRightWidth  = '1px'; style.borderRightStyle  = 'solid'; continue; }
+    {
+      // border-[var(--color-border-default)] sets borderColor
+      const a = arb('border-');
+      if (a !== null) {
+        if (a.startsWith('var(') || a.startsWith('#') || a.startsWith('rgb') || a.startsWith('hsl')) {
+          style.borderColor = a;
+        }
+        // Numeric border-[2px] sets width
+        else if (/^\d/.test(a)) {
+          style.borderWidth = a;
+        }
+        continue;
+      }
+    }
+
+    // ── Border radius ──────────────────────────────────────────────────────
+    { const a = arb('rounded-'); if (a !== null) { style.borderRadius = a; continue; } }
+    if (base === 'rounded-none') { style.borderRadius = '0';        continue; }
+    if (base === 'rounded-sm')   { style.borderRadius = '0.125rem'; continue; }
+    if (base === 'rounded')      { style.borderRadius = '0.25rem';  continue; }
+    if (base === 'rounded-md')   { style.borderRadius = '0.375rem'; continue; }
+    if (base === 'rounded-lg')   { style.borderRadius = '0.5rem';   continue; }
+    if (base === 'rounded-xl')   { style.borderRadius = '0.75rem';  continue; }
+    if (base === 'rounded-2xl')  { style.borderRadius = '1rem';     continue; }
+    if (base === 'rounded-3xl')  { style.borderRadius = '1.5rem';   continue; }
+    if (base === 'rounded-full') { style.borderRadius = '9999px';   continue; }
+
+    // ── Shadow ─────────────────────────────────────────────────────────────
+    { const a = arb('shadow-'); if (a !== null) { style.boxShadow = a; continue; } }
+    if (base === 'shadow-none') { style.boxShadow = 'none'; continue; }
+    if (base === 'shadow-sm')   { style.boxShadow = '0 1px 2px 0 rgb(0 0 0 / 0.05)'; continue; }
+    if (base === 'shadow')      { style.boxShadow = '0 1px 3px 0 rgb(0 0 0 / 0.1), 0 1px 2px -1px rgb(0 0 0 / 0.1)'; continue; }
+    if (base === 'shadow-md')   { style.boxShadow = '0 4px 6px -1px rgb(0 0 0 / 0.1), 0 2px 4px -2px rgb(0 0 0 / 0.1)'; continue; }
+    if (base === 'shadow-lg')   { style.boxShadow = '0 10px 15px -3px rgb(0 0 0 / 0.1), 0 4px 6px -4px rgb(0 0 0 / 0.1)'; continue; }
+
+    // ── Position ───────────────────────────────────────────────────────────
+    if (base === 'relative') { style.position = 'relative'; continue; }
+    if (base === 'absolute') { style.position = 'absolute'; continue; }
+    if (base === 'static')   { style.position = 'static';   continue; }
+    if (base === 'sticky')   { style.position = 'sticky';   continue; }
+    if (base === 'fixed') {
+      // In preview context, fixed breaks out of the container — use sticky instead
+      style.position = opts.sanitizePosition ? 'sticky' : 'fixed';
+      continue;
+    }
+    if (base === 'inset-0')   { style.inset  = '0';  continue; }
+    if (base === 'inset-x-0') { style.left   = '0';  style.right  = '0'; continue; }
+    if (base === 'inset-y-0') { style.top    = '0';  style.bottom = '0'; continue; }
+    if (base === 'top-0')     { style.top    = '0';  continue; }
+    if (base === 'bottom-0')  { style.bottom = '0';  continue; }
+    if (base === 'left-0')    { style.left   = '0';  continue; }
+    if (base === 'right-0')   { style.right  = '0';  continue; }
+    { const a = arb('top-');    if (a !== null) { style.top    = a; continue; } }
+    { const a = arb('bottom-'); if (a !== null) { style.bottom = a; continue; } }
+    { const a = arb('left-');   if (a !== null) { style.left   = a; continue; } }
+    { const a = arb('right-');  if (a !== null) { style.right  = a; continue; } }
+    { const a = arb('inset-');  if (a !== null) { style.inset  = a; continue; } }
+
+    // ── Z-index ────────────────────────────────────────────────────────────
+    { const a = arb('z-'); if (a !== null) { style.zIndex = parseInt(a); continue; } }
+    { const m = base.match(/^z-(\d+)$/); if (m) { style.zIndex = parseInt(m[1]); continue; } }
+
+    // ── Overflow ───────────────────────────────────────────────────────────
+    if (base === 'overflow-hidden')   { style.overflow  = 'hidden';   continue; }
+    if (base === 'overflow-auto')     { style.overflow  = 'auto';     continue; }
+    if (base === 'overflow-scroll')   { style.overflow  = 'scroll';   continue; }
+    if (base === 'overflow-visible')  { style.overflow  = 'visible';  continue; }
+    if (base === 'overflow-x-hidden') { style.overflowX = 'hidden';   continue; }
+    if (base === 'overflow-y-auto')   { style.overflowY = 'auto';     continue; }
+    if (base === 'overflow-y-hidden') { style.overflowY = 'hidden';   continue; }
+
+    // ── Opacity ────────────────────────────────────────────────────────────
+    { const a = arb('opacity-'); if (a !== null) { style.opacity = parseFloat(a) / 100; continue; } }
+    { const m = base.match(/^opacity-(\d+)$/); if (m) { style.opacity = parseInt(m[1]) / 100; continue; } }
+
+    // ── Object fit / position ──────────────────────────────────────────────
+    if (base === 'object-cover')    { style.objectFit      = 'cover';   continue; }
+    if (base === 'object-contain')  { style.objectFit      = 'contain'; continue; }
+    if (base === 'object-fill')     { style.objectFit      = 'fill';    continue; }
+    if (base === 'object-top')      { style.objectPosition = 'top';     continue; }
+    if (base === 'object-center')   { style.objectPosition = 'center';  continue; }
+
+    // ── Aspect ratio ───────────────────────────────────────────────────────
+    { const a = arb('aspect-'); if (a !== null) { (style as Record<string,unknown>).aspectRatio = a; continue; } }
+    if (base === 'aspect-square') { (style as Record<string,unknown>).aspectRatio = '1 / 1'; continue; }
+    if (base === 'aspect-video')  { (style as Record<string,unknown>).aspectRatio = '16 / 9'; continue; }
+
+    // ── Cursor / pointer / select ──────────────────────────────────────────
+    if (base === 'cursor-pointer')       { style.cursor        = 'pointer'; continue; }
+    if (base === 'cursor-default')       { style.cursor        = 'default'; continue; }
+    if (base === 'select-none')          { style.userSelect    = 'none';    continue; }
+    if (base === 'pointer-events-none')  { style.pointerEvents = 'none';    continue; }
+
+    // ── Misc ───────────────────────────────────────────────────────────────
+    if (base === 'transition')     { style.transition = 'all 0.15s ease'; continue; }
+    if (base === 'transition-all') { style.transition = 'all 0.15s ease'; continue; }
+    if (base === 'mx-auto')        { style.marginLeft = 'auto'; style.marginRight = 'auto'; continue; }
+
+    // Unknown classes are silently skipped — they cause no harm.
+  }
+
+  return style;
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+// § 8  Blueprint renderer
+//
+//  Three-level hierarchy:
+//   BlueprintRenderer  → root wrapper (CSS vars + flex-col layout)
+//     BlueprintSection → one uiBlueprint.sections[] entry (semantic tag + Tailwind layout)
+//       BlueprintNode  → one component / sub-component (element selection + Tailwind classes)
+//
+//  Recursive: BlueprintNode renders its own `components` / `children` children,
+//  enabling any DOM depth the AI extractor might emit.
+// ─────────────────────────────────────────────────────────────────────────────
+
+/** Local recursive type — extends the flat DesignTokens schema with optional nesting. */
+type BPComponent = {
+  role: string;
+  classes?: string;
+  content?: string;
+  assetRef?: string;
+  repeats?: number;
+  /** Nested children — emitted by the AI when repeating-structure collapse is used */
+  components?: BPComponent[];
+  children?: BPComponent[];
+};
+
+/** Picks the right HTML tag for a component's semantic role. */
+function roleTag(role: string): string {
+  const r = role.toLowerCase();
+  if (r === 'h1' || r === 'headline' || r.includes('heading-1')) return 'h1';
+  if (r === 'h2' || r === 'heading' || r.includes('heading-2') || r === 'title') return 'h2';
+  if (r === 'h3' || r.includes('heading-3') || r === 'subheading') return 'h3';
+  if (r === 'h4' || r.includes('heading-4')) return 'h4';
+  if (r === 'paragraph' || r === 'body-text' || r === 'description' || r === 'lead' || r === 'subtitle') return 'p';
+  if (r === 'button' || r === 'cta' || r === 'cta-button' || r.includes('btn')) return 'button';
+  if (r === 'link' || r === 'anchor') return 'a';
+  if (r === 'nav' || r === 'navigation') return 'nav';
+  if (r === 'ul' || r === 'list') return 'ul';
+  if (r === 'li' || r === 'list-item') return 'li';
+  if (r === 'hr' || r === 'divider' || r === 'separator') return 'hr';
+  if (r === 'img' || r === 'image' || r === 'photo') return 'img';
+  if (r === 'span' || r === 'label' || r === 'badge' || r === 'tag' || r === 'chip'
+      || r === 'nav-item' || r === 'nav-link' || r === 'menu-item') return 'span';
+  return 'div';
+}
+
+function BlueprintNode({ node }: { node: BPComponent }) {
+  const style = twToStyle(node.classes ?? '', { sanitizePosition: true });
+  const childNodes = node.components ?? node.children ?? [];
+  const tag = roleTag(node.role);
+
+  // ── Image: has assetRef that looks like a URL ──────────────────────────
+  if (node.assetRef && (node.assetRef.startsWith('http') || node.assetRef.startsWith('/'))) {
+    if (tag === 'img' || node.role.toLowerCase().includes('image') || node.role.toLowerCase().includes('logo') || node.role.toLowerCase().includes('photo')) {
+      // eslint-disable-next-line @next/next/no-img-element
+      return <img src={node.assetRef} alt={node.content ?? ''} style={{ maxWidth: '100%', ...style }} />;
+    }
+    // background-image container
+    return (
+      <div style={{ backgroundImage: `url(${node.assetRef})`, backgroundSize: 'cover', backgroundPosition: 'center', ...style }}>
+        {childNodes.map((c, i) => <BlueprintNode key={i} node={c} />)}
+      </div>
+    );
+  }
+
+  // ── SVG placeholder: inline-svg:<n> ────────────────────────────────────
+  if (node.assetRef?.startsWith('inline-svg:')) {
+    return (
+      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', ...style }}>
+        <span style={{ fontSize: 10, opacity: 0.4 }}>◈</span>
+      </div>
+    );
+  }
+
+  // ── Gradient background via assetRef ───────────────────────────────────
+  if (node.assetRef && (node.assetRef.includes('gradient') || node.assetRef.startsWith('linear') || node.assetRef.startsWith('radial'))) {
+    return (
+      <div style={{ background: node.assetRef, ...style }}>
+        {childNodes.map((c, i) => <BlueprintNode key={i} node={c} />)}
+      </div>
+    );
+  }
+
+  // ── Divider ────────────────────────────────────────────────────────────
+  if (tag === 'hr') {
+    return <hr style={{ border: 'none', borderTopWidth: '1px', borderTopStyle: 'solid', ...style }} />;
+  }
+
+  // ── Leaf text node ─────────────────────────────────────────────────────
+  const content = node.content
+    ? <>{node.content}</>
+    : childNodes.length > 0
+      ? <>{childNodes.map((c, i) => <BlueprintNode key={i} node={c} />)}</>
+      : null;
+
+  const baseStyle: React.CSSProperties = tag === 'p' || tag === 'h1' || tag === 'h2' || tag === 'h3' || tag === 'h4'
+    ? { margin: 0, ...style }
+    : tag === 'button'
+      ? { cursor: 'pointer', border: 'none', background: 'none', ...style }
+      : tag === 'a'
+        ? { textDecoration: 'none', ...style }
+        : tag === 'ul'
+          ? { listStyle: 'none', margin: 0, padding: 0, ...style }
+          : tag === 'li'
+            ? { ...style }
+            : style;
+
+  const Tag = tag as React.ElementType;
+  return <Tag style={baseStyle}>{content}</Tag>;
+}
+
+/** Section-level type from the DesignTokens schema (with components typed locally). */
+type BPSection = {
+  id: string;
+  semanticType: string;
+  layoutClasses: string;
+  zLayer: 'base' | 'floating' | 'overlay';
+  components: BPComponent[];
+};
+
+function BlueprintSection({ section }: { section: BPSection }) {
+  const style = twToStyle(section.layoutClasses ?? '', { sanitizePosition: true });
+
+  // Map semanticType to semantic HTML tag
+  const tagName =
+    section.semanticType === 'nav'    ? 'nav'     :
+    section.semanticType === 'footer' ? 'footer'  :
+    section.semanticType === 'hero'   ? 'header'  :
+    'section';
+  const Tag = tagName as React.ElementType;
+
+  return (
+    <Tag style={style}>
+      {section.components.map((comp, i) => (
+        <BlueprintNode key={i} node={comp} />
+      ))}
+    </Tag>
+  );
+}
 
 /**
- * The decorative visual panel shown alongside hero text.
- * Shape and content driven by siteArchitecture.visualWeight.dominant.
- */
-function VisualAccent({ tokens, width, height }: { tokens: DesignTokens; width: number | string; height: number | string }) {
-  const c   = tokens.color;
-  const r   = tokens.radius;
-  const dom = tokens.siteArchitecture.visualWeight.dominant;
-  const exp = tokens.siteArchitecture.visualWeight.hierarchy === 'expressive';
-
-  if (dom === 'imagery') {
-    return (
-      <div style={{ width, height, borderRadius: r.lg, overflow:'hidden', border:`1px solid ${c.border}`, position:'relative', flexShrink:0 }}>
-        <UnsplashImg tokens={tokens} seed={7} width={320} height={240} />
-        {/* Subtle brand tint overlay */}
-        <div style={{ position:'absolute', inset:0, background:`linear-gradient(180deg, transparent 55%, ${c.background.page}cc)`, pointerEvents:'none' }} />
-      </div>
-    );
-  }
-
-  if (dom === 'color') {
-    const bg = exp
-      ? `linear-gradient(140deg, ${c.brand.primary}, ${c.brand.accent})`
-      : c.brand.primary;
-    return (
-      <div style={{ width, height, borderRadius: r.xl, background: bg, flexShrink:0, boxShadow: tokens.shadow.lg, display:'flex', alignItems:'center', justifyContent:'center' }}>
-        {exp && <span style={{ fontSize:20, color:`${c.text.inverse}55` }}>◈</span>}
-      </div>
-    );
-  }
-
-  if (dom === 'data') {
-    const bars = [40,65,45,80,55,90,70,48];
-    return (
-      <div style={{ width, height, borderRadius: r.md, background: c.background.surface, border:`1px solid ${c.border}`, padding:'6px 8px', display:'flex', flexDirection:'column', justifyContent:'flex-end', gap:2, flexShrink:0, boxShadow: tokens.shadow.sm }}>
-        <span style={{ fontSize:7, fontFamily:monoFont, color:c.text.secondary, marginBottom:2 }}>Activity</span>
-        <div style={{ flex:1, display:'flex', alignItems:'flex-end', gap:2 }}>
-          {bars.map((h, i) => (
-            <div key={i} style={{ flex:1, height:`${h}%`, borderRadius:'2px 2px 0 0', background:c.brand.primary, opacity: 0.25 + (h/100)*0.65 }} />
-          ))}
-        </div>
-      </div>
-    );
-  }
-
-  // typography-dominant: typographic specimen block
-  return (
-    <div style={{ width, height, borderRadius: r.xl, background:`${c.brand.primary}08`, border:`1px solid ${c.border}`, display:'flex', flexDirection:'column', alignItems:'flex-start', justifyContent:'center', padding:'10px 12px', flexShrink:0, gap:4 }}>
-      <span style={{ fontSize:18, fontWeight:700, fontFamily: tokens.typography.families.heading, color:c.brand.primary, lineHeight:1.1, opacity:0.7 }}>Aa</span>
-      <div style={{ display:'flex', flexDirection:'column', gap:2, width:'100%' }}>
-        {[1,0.7,0.5].map((op,i) => (
-          <div key={i} style={{ height:3, borderRadius:2, background:c.text.primary, opacity:op * 0.25, width:`${[90,70,55][i]}%` }} />
-        ))}
-      </div>
-    </div>
-  );
-}
-
-// ─────────────────────────────────────────────────────────────────────────────
-// § 9  HeroSection — 4 skeleton layout variants × visual weight  ★ upgraded
-// ─────────────────────────────────────────────────────────────────────────────
-
-function HeroSection({ tokens, scale, gap }: { tokens: DesignTokens; scale: number; gap: number }) {
-  const c   = tokens.color;
-  const ty  = tokens.typography;
-  const r   = tokens.radius;
-  const sk  = tokens.skeleton.hero;
-  const t   = tok(tokens);
-  const exp = tokens.siteArchitecture.visualWeight.hierarchy === 'expressive';
-  const dom = tokens.siteArchitecture.visualWeight.dominant;
-
-  const copy     = paradigmCopy(tokens);
-  const headline  = sk.headline || copy.tagline;
-  const ctaCount  = Math.max(sk.ctaCount, 1);
-  const layout    = sk.layout;
-
-  const headlineFontSize = mockSize(t.fs('4xl'), scale);
-  const bodyFontSize     = mockSize(t.fs('sm'), scale * 0.88);
-  const ctaFontSize      = mockSize(t.fs('xs'), scale);
-  const gapPx            = Math.round(7 * gap);
-  const padV             = Math.round(8 * gap);
-  const padH             = 14;
-
-  // Apply golden-ratio line-height to body font size
-  const bodyLH = goldenLH(t.fs('sm'));
-
-  const smoothText: React.CSSProperties = { WebkitFontSmoothing:'antialiased' };
-
-  const ctas = (
-    <div style={{ display:'flex', gap: Math.round(5 * gap), flexWrap:'wrap' }}>
-      <HoverBtn tokens={tokens} style={{ padding:`${Math.round(5*gap)}px ${Math.round(10*gap)}px`, fontFamily: ty.families.body, fontWeight: ty.weights.bold, fontSize: ctaFontSize, borderRadius: r.md, ...smoothText }}>
-        {copy.primaryCta}
-      </HoverBtn>
-      {ctaCount >= 2 && (
-        <HoverBtn tokens={tokens} outlined style={{ padding:`${Math.round(5*gap)}px ${Math.round(10*gap)}px`, fontFamily: ty.families.body, fontWeight: ty.weights.medium, fontSize: ctaFontSize, borderRadius: r.md, ...smoothText }}>
-          {copy.secondaryCta}
-        </HoverBtn>
-      )}
-    </div>
-  );
-
-  // ── full-bleed ────────────────────────────────────────────────────────────
-  if (layout === 'full-bleed') {
-    const heroBg = exp
-      ? `linear-gradient(135deg, ${c.brand.primary}, ${c.brand.secondary})`
-      : c.brand.primary;
-    return (
-      <div style={{ flex:1, display:'flex', flexDirection:'column', alignItems:'center', justifyContent:'center', background: heroBg, padding:`${padV}px ${padH}px`, textAlign:'center', gap:`${gapPx}px` }}>
-        {dom === 'typography' && <span style={{ fontSize:7, fontFamily:monoFont, color:`${c.text.inverse}80`, letterSpacing:'0.15em', textTransform:'uppercase' }}>— NEW —</span>}
-        <h1 style={{ margin:0, fontFamily: ty.families.heading, fontWeight: ty.weights.bold, fontSize: headlineFontSize, lineHeight: t.lh('4xl'), color: c.text.inverse, ...smoothText }}>{headline}</h1>
-        <p style={{ margin:0, fontSize: bodyFontSize, color:`${c.text.inverse}aa`, maxWidth:220, lineHeight: bodyLH }}>{copy.tagline}</p>
-        {ctas}
-      </div>
-    );
-  }
-
-  // ── centered ──────────────────────────────────────────────────────────────
-  if (layout === 'centered') {
-    const pageBg = dom === 'color'
-      ? `linear-gradient(180deg, ${c.brand.primary}14, ${c.background.page})`
-      : c.background.page;
-    return (
-      <div style={{ flex:1, display:'flex', flexDirection:'column', alignItems:'center', justifyContent:'center', textAlign:'center', background: pageBg, padding:`${padV}px 20px`, gap:`${gapPx}px` }}>
-        {dom === 'imagery' && (
-          <div style={{ width:72, height:42, borderRadius: r.lg, overflow:'hidden', border:`1px solid ${c.border}`, marginBottom:2 }}>
-            <UnsplashImg tokens={tokens} seed={42} width={144} height={84} />
-          </div>
-        )}
-        <h1 style={{ margin:0, fontFamily: ty.families.heading, fontWeight: ty.weights.bold, fontSize: headlineFontSize, lineHeight: t.lh('4xl'), color: c.text.primary, ...smoothText }}>{headline}</h1>
-        <p style={{ margin:0, fontSize: bodyFontSize, color: c.text.secondary, maxWidth:240, lineHeight: bodyLH }}>{copy.tagline}</p>
-        {ctas}
-      </div>
-    );
-  }
-
-  // ── asymmetric (2/3 text + 1/3 accent) ───────────────────────────────────
-  if (layout === 'asymmetric') {
-    return (
-      <div style={{ flex:1, display:'flex', overflow:'hidden', background: c.background.page }}>
-        <div style={{ flex:2, display:'flex', flexDirection:'column', justifyContent:'center', padding:`${padV}px ${padH}px`, gap:`${Math.round(6*gap)}px` }}>
-          <h1 style={{ margin:0, fontFamily: ty.families.heading, fontWeight: ty.weights.bold, fontSize: headlineFontSize, lineHeight: t.lh('4xl'), color: c.text.primary, ...smoothText }}>{headline}</h1>
-          <p style={{ margin:0, fontSize: bodyFontSize, color: c.text.secondary, lineHeight: bodyLH }}>{copy.tagline}</p>
-          {ctas}
-        </div>
-        <div style={{ flex:1, display:'flex', alignItems:'center', justifyContent:'center', padding:'8px 10px 8px 0' }}>
-          <VisualAccent tokens={tokens} width="100%" height={80} />
-        </div>
-      </div>
-    );
-  }
-
-  // ── split — equal halves (default) ───────────────────────────────────────
-  return (
-    <div style={{ flex:1, display:'flex', overflow:'hidden', background: c.background.page }}>
-      <div style={{ flex:1, display:'flex', flexDirection:'column', justifyContent:'center', padding:`${padV}px ${padH}px`, gap:`${Math.round(5*gap)}px` }}>
-        <h1 style={{ margin:0, fontFamily: ty.families.heading, fontWeight: ty.weights.bold, fontSize: headlineFontSize, lineHeight: t.lh('4xl'), color: c.text.primary, ...smoothText }}>{headline}</h1>
-        <p style={{ margin:0, fontSize: bodyFontSize, color: c.text.secondary, lineHeight: bodyLH }}>{copy.tagline}</p>
-        {ctas}
-      </div>
-      <div style={{ width:82, margin:'8px 8px 8px 0', display:'flex', alignItems:'center', justifyContent:'center' }}>
-        <VisualAccent tokens={tokens} width="100%" height="100%" />
-      </div>
-    </div>
-  );
-}
-
-// ─────────────────────────────────────────────────────────────────────────────
-// § 10  FeatureGrid — adapts to visualWeight and layout.type  ★ new
-// ─────────────────────────────────────────────────────────────────────────────
-
-function FeatureGrid({ tokens, scale, gap }: { tokens: DesignTokens; scale: number; gap: number }) {
-  const c   = tokens.color;
-  const ty  = tokens.typography;
-  const r   = tokens.radius;
-  const t   = tok(tokens);
-  const dom = tokens.siteArchitecture.visualWeight.dominant;
-  const hier = tokens.siteArchitecture.visualWeight.hierarchy;
-  const isMulti = tokens.siteArchitecture.layout.type === 'multi-column';
-  const cols = isMulti ? 4 : 3;
-
-  const gapPx = Math.round(5 * gap);
-  const padH  = Math.round(8 * gap);
-  const padB  = Math.round(6 * gap);
-
-  // Data-dominant: show metric cards instead of feature cards
-  if (dom === 'data') {
-    const metrics = [['2.4k','Users'], ['98%','Uptime'], ['14ms','Latency']].slice(0, cols === 4 ? 4 : 3);
-    return (
-      <div style={{ display:'grid', gridTemplateColumns:`repeat(${cols},1fr)`, gap: gapPx, padding:`0 ${padH}px ${padB}px`, flexShrink:0 }}>
-        {metrics.map(([val, label]) => (
-          <HoverCard key={label} tokens={tokens} style={{ background: c.background.surface, border:`1px solid ${c.border}`, borderRadius: r.md, padding:`${gapPx}px`, boxShadow: tokens.shadow.sm }}>
-            <p style={{ margin:0, fontWeight: ty.weights.bold, fontSize: mockSize(t.fs('xl'), scale * 0.7), color: c.brand.primary, fontFamily: ty.families.body }}>{val}</p>
-            <p style={{ margin:'2px 0 0', fontSize: mockSize(t.fs('xs'), scale * 0.88), color: c.text.secondary, fontFamily: ty.families.body }}>{label}</p>
-          </HoverCard>
-        ))}
-      </div>
-    );
-  }
-
-  const features = [
-    { icon:'◈', label:'Tokens',  desc:'Extracted from source' },
-    { icon:'⊡', label:'Preview', desc:'Instant visual feedback' },
-    { icon:'⇿', label:'Compare', desc:'Side-by-side accuracy' },
-    { icon:'✦', label:'Export',  desc:'CSS · Tailwind · JSON' },
-  ].slice(0, cols);
-
-  return (
-    <div style={{ display:'grid', gridTemplateColumns:`repeat(${cols},1fr)`, gap: gapPx, padding:`0 ${padH}px ${padB}px`, flexShrink:0 }}>
-      {features.map(({ icon, label, desc }) => (
-        <HoverCard key={label} tokens={tokens} style={{ background: c.background.surface, border:`1px solid ${c.border}`, borderRadius: r.md, padding:`${gapPx}px`, display:'flex', flexDirection: hier === 'expressive' ? 'column' : 'row', alignItems: hier !== 'expressive' ? 'center' : 'flex-start', gap:5, boxShadow: tokens.shadow.sm }}>
-          {hier === 'expressive' ? (
-            <div style={{ width:22, height:22, borderRadius: r.sm, background:`${c.brand.primary}18`, display:'flex', alignItems:'center', justifyContent:'center', marginBottom:2, flexShrink:0 }}>
-              <span style={{ fontSize:10, color: c.brand.primary }}>{icon}</span>
-            </div>
-          ) : (
-            <span style={{ fontSize:10, color: c.brand.primary, flexShrink:0 }}>{icon}</span>
-          )}
-          <div>
-            <span style={{ display:'block', fontSize: mockSize(t.fs('xs'), scale * 0.88), fontWeight: ty.weights.semibold, color: c.text.primary, fontFamily: ty.families.body }}>{label}</span>
-            {hier !== 'functional' && (
-              <span style={{ display:'block', fontSize: mockSize(t.fs('xs'), scale * 0.75), color: c.text.secondary, fontFamily: ty.families.body, marginTop:1 }}>{desc}</span>
-            )}
-          </div>
-        </HoverCard>
-      ))}
-    </div>
-  );
-}
-
-// ─────────────────────────────────────────────────────────────────────────────
-// § 11  SidebarItem (shared by DashboardLayout)
-// ─────────────────────────────────────────────────────────────────────────────
-
-function SidebarItem({ label, active, tokens }: { label: string; active: boolean; tokens: DesignTokens }) {
-  const [hovered, setHovered] = useState(false);
-  const c = tokens.color;
-  const r = tokens.radius;
-  const isOn = active || hovered;
-  return (
-    <div
-      title={label}
-      style={{
-        width:36, height:28, borderRadius: r.sm,
-        display:'flex', alignItems:'center', justifyContent:'center',
-        background: isOn ? `${c.brand.primary}1a` : 'transparent',
-        color: isOn ? c.brand.primary : c.text.secondary,
-        fontSize:9, cursor:'pointer',
-        transition:'background 0.15s, color 0.15s',
-        boxShadow: active ? tokens.shadow.sm : 'none',
-      }}
-      onMouseEnter={() => setHovered(true)} onMouseLeave={() => setHovered(false)}
-    >
-      {label[0]}
-    </div>
-  );
-}
-
-// ─────────────────────────────────────────────────────────────────────────────
-// § 12  Layout engines
-// ─────────────────────────────────────────────────────────────────────────────
-
-// ── 12a  LandingLayout  (paradigm: landing | portfolio) ───────────────────
-
-function LandingLayout({ tokens, scale }: { tokens: DesignTokens; scale: number }) {
-  const c   = tokens.color;
-  const ty  = tokens.typography;
-  const sa  = tokens.siteArchitecture;
-  const gap = D[sa.density] ?? 1;
-  const navTransparent = sa.layout.navPosition === 'floating'
-    || tokens.skeleton.hero.layout === 'full-bleed';
-
-  return (
-    <div style={{ display:'flex', flexDirection:'column', height:'100%', background: c.background.page, fontFamily: ty.families.body, color: c.text.primary }}>
-      <NavBar tokens={tokens} transparent={navTransparent} />
-      <HeroSection tokens={tokens} scale={scale} gap={gap} />
-      <FeatureGrid tokens={tokens} scale={scale} gap={gap} />
-      <FooterBlock tokens={tokens} />
-    </div>
-  );
-}
-
-// ── 12b  GridLayout  (paradigm: e-commerce | social-feed; or layout.type: grid | masonry) ★ upgraded
-
-function GridLayout({ tokens, scale }: { tokens: DesignTokens; scale: number }) {
-  const c   = tokens.color;
-  const ty  = tokens.typography;
-  const r   = tokens.radius;
-  const sa  = tokens.siteArchitecture;
-  const sk  = tokens.skeleton;
-  const t   = tok(tokens);
-  const gap = D[sa.density] ?? 1;
-  const gapPx = Math.round(5 * gap);
-
-  const isMasonry = sa.layout.type === 'masonry';
-  const isEcom    = sa.paradigm === 'e-commerce';
-  const cols = sk.cards.gridColumns > 0
-    ? Math.min(sk.cards.gridColumns, 5)
-    : sa.density === 'compact' ? 4 : isMasonry ? 3 : 3;
-
-  // Masonry: each column is an independent flow with staggered heights
-  const masonryHeights = [
-    [60, 38, 54, 42],
-    [44, 68, 36, 58],
-    [52, 40, 70, 44],
-    [36, 56, 48, 66],
-    [62, 34, 52, 40],
-  ];
-
-  const cardNames = isEcom
-    ? ['Minimal Tee','Classic Mug','Poster Set','Canvas Bag','Linen Shirt','Craft Mug']
-    : ['Just posted','Trending now','For you','Popular','Following','Suggested'];
-  const cardSubs = isEcom
-    ? ['$29','$18','$42','$12','$38','$22']
-    : ['♥ 142','↺ 38','● 4.8','★ top','● new','↺ 12'];
-
-  const accentColors = [c.brand.primary, c.brand.secondary, c.brand.accent];
-
-  if (isMasonry) {
-    return (
-      <div style={{ display:'flex', flexDirection:'column', height:'100%', background: c.background.page, fontFamily: ty.families.body }}>
-        <NavBar tokens={tokens} transparent />
-        <div style={{ flex:1, overflow:'hidden', padding: gapPx, display:'flex', gap: gapPx }}>
-          {Array.from({ length: Math.min(cols, 5) }, (_, col) => (
-            <div key={col} style={{ flex:1, display:'flex', flexDirection:'column', gap: gapPx }}>
-              {(masonryHeights[col] ?? masonryHeights[0]).map((h, row) => {
-                const idx = col * 4 + row;
-                const bg  = accentColors[idx % 3];
-                return (
-                  <HoverCard key={row} tokens={tokens} disabled={!sk.cards.hasShadow}
-                    style={{ background: c.background.surface, borderRadius: r.md, overflow:'hidden', border: sk.cards.hasShadow ? 'none' : `1px solid ${c.border}` }}>
-                    <div style={{ height: h, position:'relative', overflow:'hidden' }}>
-                      <UnsplashImg tokens={tokens} seed={idx + 1} width={200} height={h * 2} />
-                    </div>
-                    <div style={{ padding:'4px 6px' }}>
-                      <p style={{ margin:0, fontSize: mockSize(t.fs('xs'), scale), fontWeight: ty.weights.semibold, color: c.text.primary, overflow:'hidden', whiteSpace:'nowrap', textOverflow:'ellipsis', WebkitFontSmoothing:'antialiased' }}>
-                        {cardNames[idx % cardNames.length]}
-                      </p>
-                      <p style={{ margin:'1px 0 0', fontSize: mockSize(t.fs('xs'), scale * 0.8), color: c.text.secondary, lineHeight: goldenLH(t.fs('xs')) }}>
-                        {cardSubs[idx % cardSubs.length]}
-                      </p>
-                    </div>
-                  </HoverCard>
-                );
-              })}
-            </div>
-          ))}
-        </div>
-        <FooterBlock tokens={tokens} />
-      </div>
-    );
-  }
-
-  // Uniform grid
-  const cardCount = cols * 2;
-  return (
-    <div style={{ display:'flex', flexDirection:'column', height:'100%', background: c.background.page, fontFamily: ty.families.body }}>
-      <NavBar tokens={tokens} transparent />
-      <div style={{ flex:1, overflow:'hidden', padding: gapPx, display:'grid', gridTemplateColumns:`repeat(${cols},1fr)`, gap: gapPx, alignContent:'start' }}>
-        {Array.from({ length: cardCount }, (_, i) => {
-          const heights = [38, 28, 44, 32, 50, 24];
-          const h = heights[i % heights.length];
-          const bg = accentColors[i % 3];
-          return (
-            <HoverCard key={i} tokens={tokens} disabled={!sk.cards.hasShadow}
-              style={{ background: c.background.surface, borderRadius: r.md, overflow:'hidden', border: sk.cards.hasShadow ? 'none' : `1px solid ${c.border}` }}>
-              <div style={{ height: h, position:'relative', overflow:'hidden' }}>
-                <UnsplashImg tokens={tokens} seed={i + 20} width={200} height={h * 2} />
-              </div>
-              <div style={{ padding:'4px 6px' }}>
-                <p style={{ margin:0, fontSize: mockSize(t.fs('xs'), scale), fontWeight: ty.weights.semibold, color: c.text.primary, overflow:'hidden', whiteSpace:'nowrap', textOverflow:'ellipsis', WebkitFontSmoothing:'antialiased' }}>
-                  {cardNames[i % cardNames.length]}
-                </p>
-                <p style={{ margin:'1px 0 0', fontSize: mockSize(t.fs('xs'), scale * 0.8), color: c.text.secondary, lineHeight: goldenLH(t.fs('xs')) }}>
-                  {cardSubs[i % cardSubs.length]}
-                </p>
-              </div>
-            </HoverCard>
-          );
-        })}
-      </div>
-      <FooterBlock tokens={tokens} />
-    </div>
-  );
-}
-
-// ── 12c  EditorialLayout  (paradigm: content-site | docs) ★ upgraded ─────
-
-function EditorialLayout({ tokens, scale }: { tokens: DesignTokens; scale: number }) {
-  const c   = tokens.color;
-  const ty  = tokens.typography;
-  const r   = tokens.radius;
-  const sa  = tokens.siteArchitecture;
-  const t   = tok(tokens);
-  const gap = D[sa.density] ?? 1;
-  const isDocs    = sa.paradigm === 'docs';
-  const hasSidebar = isDocs || sa.layout.type === 'sidebar';
-  const headline  = tokens.skeleton.hero.headline || 'The new standard';
-
-  const article = (
-    <div style={{ display:'flex', flexDirection:'column', gap: Math.round(6 * gap) }}>
-      {/* Byline */}
-      <div style={{ display:'flex', gap:5, alignItems:'center' }}>
-        <div style={{ width:14, height:14, borderRadius:'50%', background: c.brand.primary, opacity:0.55, flexShrink:0 }} />
-        <span style={{ fontSize: mockSize(t.fs('xs'), scale * 0.88), color: c.text.secondary, fontFamily: ty.families.body }}>Author · 5 min read</span>
-      </div>
-      {/* Headline */}
-      <h1 style={{ margin:0, fontWeight: ty.weights.bold, fontFamily: ty.families.heading, fontSize: mockSize(t.fs('3xl'), scale), lineHeight: t.lh('3xl'), color: c.text.primary }}>
-        {headline}
-      </h1>
-      {/* Lead paragraph */}
-      <p style={{ margin:0, fontSize: mockSize(t.fs('base'), scale * 0.85), lineHeight: t.lh('base'), color: c.text.secondary, fontFamily: ty.families.body }}>
-        Consistent spacing, intentional colour, and typographic hierarchy form the bedrock of every memorable interface.
-      </p>
-      {/* Pull quote / image strip */}
-      <div style={{ width:'100%', height: Math.round(32 * gap), borderRadius: r.md, background:`linear-gradient(90deg, ${c.brand.primary}22, ${c.brand.secondary}14)`, border:`1px solid ${c.border}` }} />
-      {/* Tag row */}
-      <div style={{ display:'flex', gap:5 }}>
-        {['Design', 'Systems', 'Tokens'].map(tag => (
-          <span key={tag} style={{ padding:'2px 7px', borderRadius: r.sm, border:`1px solid ${c.border}`, fontSize: mockSize(t.fs('xs'), scale * 0.85), color: c.text.secondary, fontFamily: ty.families.body }}>{tag}</span>
-        ))}
-      </div>
-      {/* Secondary paragraph blocks */}
-      {[1, 2].map(i => (
-        <div key={i} style={{ display:'flex', flexDirection:'column', gap:3 }}>
-          <div style={{ height:3, borderRadius:2, background: c.text.primary, opacity:0.1, width:'100%' }} />
-          <div style={{ height:3, borderRadius:2, background: c.text.primary, opacity:0.08, width:'85%' }} />
-          <div style={{ height:3, borderRadius:2, background: c.text.primary, opacity:0.06, width:'92%' }} />
-        </div>
-      ))}
-    </div>
-  );
-
-  return (
-    <div style={{ display:'flex', flexDirection:'column', height:'100%', background: c.background.page, fontFamily: ty.families.body, color: c.text.primary }}>
-      <NavBar tokens={tokens} transparent />
-      <div style={{ flex:1, overflow:'hidden', display:'flex', gap:0 }}>
-        {hasSidebar && (
-          <div style={{ width:56, background: c.background.surface, borderRight:`1px solid ${c.border}`, padding:'8px 6px', flexShrink:0 }}>
-            <p style={{ margin:'0 0 6px', fontSize:8, fontWeight: ty.weights.bold, color: c.text.secondary, fontFamily:monoFont, letterSpacing:'0.08em', textTransform:'uppercase' }}>Contents</p>
-            {['Introduction','Installation','Usage','API Reference','Examples'].map((item, i) => (
-              <div key={item} style={{ padding:'3px 5px', marginBottom:1, borderRadius: r.sm, fontSize:7.5, color: i === 0 ? c.brand.primary : c.text.secondary, background: i === 0 ? `${c.brand.primary}14` : 'transparent', cursor:'pointer' }}>
-                {item}
-              </div>
-            ))}
-          </div>
-        )}
-        <div style={{ flex:1, padding:`${Math.round(10*gap)}px ${Math.round(12*gap)}px`, overflow:'hidden' }}>
-          {article}
-        </div>
-      </div>
-      <FooterBlock tokens={tokens} />
-    </div>
-  );
-}
-
-// ── 12d  DashboardLayout  (paradigm: dashboard | saas-app; or layout.type: sidebar) ★ upgraded
-
-function DashboardLayout({ tokens, scale }: { tokens: DesignTokens; scale: number }) {
-  const c   = tokens.color;
-  const ty  = tokens.typography;
-  const r   = tokens.radius;
-  const t   = tok(tokens);
-  const dom = tokens.siteArchitecture.visualWeight.dominant;
-
-  const navItems = tokens.skeleton.nav.items.length > 0
-    ? tokens.skeleton.nav.items.slice(0, 5)
-    : ['Dashboard', 'Analytics', 'Users', 'Settings'];
-
-  const metrics: [string, string, string][] = dom === 'data'
-    ? [['2.4k','Users','↑12%'], ['98%','Uptime','→'], ['14ms','Latency','↓5%'], ['$4.2k','Revenue','↑8%']]
-    : [['2.4k','Users','↑12%'], ['98%','Uptime','→'], ['14ms','Latency','↓5%'], ['$4.2k','Revenue','↑8%']];
-
-  return (
-    <div style={{ display:'flex', height:'100%', background: c.background.page, fontFamily: ty.families.body, color: c.text.primary }}>
-      {/* Sidebar */}
-      <div style={{ width:54, background: c.background.surface, borderRight:`1px solid ${c.border}`, display:'flex', flexDirection:'column', alignItems:'center', paddingTop:8, gap:4, flexShrink:0, boxShadow: tokens.shadow.sm }}>
-        <div style={{ width:22, height:22, borderRadius: r.sm, background: c.brand.primary, marginBottom:6, boxShadow: tokens.shadow.md }} />
-        {navItems.map((item, i) => (
-          <SidebarItem key={item} label={item} active={i === 0} tokens={tokens} />
-        ))}
-      </div>
-      {/* Main */}
-      <div style={{ flex:1, overflow:'hidden', padding:'8px 10px', display:'flex', flexDirection:'column', gap:6 }}>
-        <h2 style={{ margin:0, fontWeight: ty.weights.bold, fontSize: mockSize(t.fs('2xl'), scale * 0.75), color: c.text.primary, fontFamily: ty.families.heading }}>
-          {tokens.skeleton.hero.headline || 'Overview'}
-        </h2>
-        {/* Metric grid */}
-        <div style={{ display:'grid', gridTemplateColumns:'1fr 1fr', gap:5 }}>
-          {metrics.map(([val, label, delta]) => (
-            <HoverCard key={label} tokens={tokens} style={{ background: c.background.surface, border:`1px solid ${c.border}`, borderRadius: r.md, padding:'7px 9px', boxShadow: tokens.shadow.sm }}>
-              <div style={{ display:'flex', justifyContent:'space-between', alignItems:'flex-start' }}>
-                <p style={{ margin:0, fontWeight: ty.weights.bold, fontSize: mockSize(t.fs('2xl'), scale * 0.7), color: c.brand.primary, fontFamily: ty.families.heading }}>{val}</p>
-                <span style={{ fontSize:7, color: delta.startsWith('↑') ? c.status.success : c.text.secondary, fontFamily:monoFont }}>{delta}</span>
-              </div>
-              <p style={{ margin:'1px 0 0', fontSize: mockSize(t.fs('xs'), scale * 0.88), color: c.text.secondary, fontFamily: ty.families.body }}>{label}</p>
-            </HoverCard>
-          ))}
-        </div>
-        {/* Sparkline */}
-        <div style={{ flex:1, background: c.background.surface, border:`1px solid ${c.border}`, borderRadius: r.md, padding:'6px 8px', minHeight:0 }}>
-          <p style={{ margin:'0 0 4px', fontSize: mockSize(t.fs('xs'), scale * 0.9), color: c.text.secondary, fontWeight: ty.weights.semibold, fontFamily: ty.families.body }}>Activity</p>
-          <div style={{ display:'flex', alignItems:'flex-end', gap:2, height:32 }}>
-            {[40,65,45,80,60,90,55,70,85,50,75,95,60,72].map((h, i) => (
-              <div key={i} style={{ flex:1, height:`${h}%`, borderRadius:'2px 2px 0 0', background: c.brand.primary, opacity: 0.25 + (h/100) * 0.65 }} />
-            ))}
-          </div>
-        </div>
-      </div>
-    </div>
-  );
-}
-
-// ─────────────────────────────────────────────────────────────────────────────
-// § 13  MockPage — dispatch engine  ★ upgraded with paradigm × layout.type matrix
-// ─────────────────────────────────────────────────────────────────────────────
-
-/**
- * Dispatch matrix:
+ * BlueprintRenderer — data-driven, template-free page renderer.
  *
- *  paradigm         | layout.type      → Layout
- *  ─────────────────┼──────────────────────────
- *  dashboard        | any              → DashboardLayout
- *  saas-app         | any              → DashboardLayout
- *  any              | sidebar          → DashboardLayout
- *  e-commerce       | any              → GridLayout
- *  social-feed      | any              → GridLayout
- *  any              | grid | masonry   → GridLayout
- *  content-site     | any              → EditorialLayout
- *  docs             | any              → EditorialLayout
- *  landing/portfolio| any              → LandingLayout  (default)
+ * Reads exclusively from `tokens.uiBlueprint.sections`. Every section and
+ * every component within it is rendered via the Tailwind → inline-style
+ * converter, ensuring 1-to-1 fidelity with the extracted JSON.
+ *
+ * Fallback: if uiBlueprint is missing or empty a clear empty-state is shown —
+ * no fake/placeholder layout is ever substituted.
  */
-function MockPage({ tokens }: { tokens: DesignTokens }) {
-  const t = tok(tokens);
-  const heroPx = parsePx(t.fs('4xl'));
-  const scale  = Math.min(50 / Math.max(heroPx, 32), 0.55);
-  const { paradigm, layout } = tokens.siteArchitecture;
+function BlueprintRenderer({ tokens }: { tokens: DesignTokens }) {
+  const blueprint = tokens.uiBlueprint;
 
-  // Font-rendering wrapper: antialiasing + subpixel rendering applied at the root
-  const fontRenderStyle: React.CSSProperties = {
-    height: '100%',
-    WebkitFontSmoothing: 'antialiased',
-    MozOsxFontSmoothing: 'grayscale',
-    textRendering: 'optimizeLegibility',
-  };
-
-  let layout_: React.ReactNode;
-  if (paradigm === 'dashboard' || paradigm === 'saas-app' || layout.type === 'sidebar') {
-    layout_ = <DashboardLayout tokens={tokens} scale={scale} />;
-  } else if (paradigm === 'e-commerce' || paradigm === 'social-feed' || layout.type === 'grid' || layout.type === 'masonry') {
-    layout_ = <GridLayout tokens={tokens} scale={scale} />;
-  } else if (paradigm === 'content-site' || paradigm === 'docs') {
-    layout_ = <EditorialLayout tokens={tokens} scale={scale} />;
-  } else {
-    layout_ = <LandingLayout tokens={tokens} scale={scale} />;
+  // ── Empty state ─────────────────────────────────────────────────────────
+  if (!blueprint || !blueprint.sections || blueprint.sections.length === 0) {
+    return (
+      <div style={{
+        height: '100%',
+        display: 'flex',
+        flexDirection: 'column',
+        alignItems: 'center',
+        justifyContent: 'center',
+        gap: 8,
+        backgroundColor: tokens.color.background.page,
+        color: tokens.color.text.secondary,
+        fontFamily: tokens.typography.families.body,
+      }}>
+        <span style={{ fontSize: 22, opacity: 0.2 }}>◫</span>
+        <span style={{ fontSize: 10, opacity: 0.45, fontFamily: monoFont }}>uiBlueprint 数据缺失</span>
+        <span style={{
+          fontSize: 9, opacity: 0.3, fontFamily: monoFont,
+          textAlign: 'center', maxWidth: 150, lineHeight: 1.55,
+        }}>
+          重新提取以生成{'\n'}uiBlueprint.sections
+        </span>
+      </div>
+    );
   }
 
-  return <div style={fontRenderStyle}>{layout_}</div>;
+  // CSS variables let arbitrary Tailwind classes like bg-[var(--color-bg-page)] resolve
+  const cssVars = blueprintCSSVars(tokens);
+
+  // floating sections (nav / sticky bars) render first to sit at the visual top
+  const sorted = [...blueprint.sections].sort((a, b) => {
+    const order: Record<string, number> = { floating: 0, base: 1, overlay: 2 };
+    return (order[a.zLayer] ?? 1) - (order[b.zLayer] ?? 1);
+  });
+
+  return (
+    <div style={{
+      height: '100%',
+      overflow: 'hidden',
+      display: 'flex',
+      flexDirection: 'column',
+      backgroundColor: tokens.color.background.page,
+      fontFamily: tokens.typography.families.body,
+      color: tokens.color.text.primary,
+      WebkitFontSmoothing: 'antialiased',
+      MozOsxFontSmoothing: 'grayscale',
+      textRendering: 'optimizeLegibility',
+      ...cssVars,
+    }}>
+      {sorted.map(section => (
+        <BlueprintSection key={section.id} section={section as BPSection} />
+      ))}
+    </div>
+  );
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
-// § 14  BentoGrid (palette tab)
+// § 9  BentoGrid (palette tab)
 // ─────────────────────────────────────────────────────────────────────────────
 
 const cellLabelStyle: React.CSSProperties = {
@@ -1367,6 +1100,7 @@ function BentoGrid({ tokens, siteUrl }: { tokens: DesignTokens; siteUrl?: string
               ['skeleton.cards.columns',   `${tokens.skeleton.cards.gridColumns}`],
               ...(tokens.spacingSystem   ? [['spacing.steps', `${tokens.spacingSystem.steps.length} steps`]] : []),
               ...(tokens.typographyScale ? [['typo.baseSize', tokens.typographyScale.baseSize]] : []),
+              ...(tokens.uiBlueprint     ? [['uiBlueprint.sections', `${tokens.uiBlueprint.sections.length} sections`]] : [['uiBlueprint', '—']]),
             ] as [string, string][]).map(([key, val]) => (
               <div key={key} style={{ display:'flex', justifyContent:'space-between', alignItems:'center', padding:'5px 0', borderBottom:'1px solid rgba(255,255,255,.055)' }}>
                 <span style={{ fontSize:10, fontFamily:monoFont, color:'rgba(255,255,255,.3)' }}>{key}</span>
@@ -1377,26 +1111,39 @@ function BentoGrid({ tokens, siteUrl }: { tokens: DesignTokens; siteUrl?: string
         </div>
       </div>
 
-      {/* ── Cell 6: Mock Page Preview ── */}
+      {/* ── Cell 6: Blueprint Preview ── */}
       <div className="vi-cell-mock vi-glow-card">
         <div className="vi-glow-card-inner" style={{ padding:'22px 26px' }}>
           <div style={{ display:'flex', alignItems:'center', justifyContent:'space-between', marginBottom:12 }}>
-            <p style={{ ...cellLabelStyle, marginBottom:0 }}>Component Preview</p>
-            <div style={{ display:'inline-flex', alignItems:'center', gap:5, padding:'3px 10px', borderRadius:100, background: tokens.spacingSystem ? 'rgba(52,211,153,.08)' : 'rgba(56,189,248,.1)', border:`1px solid ${tokens.spacingSystem ? 'rgba(52,211,153,.25)' : 'rgba(56,189,248,.2)'}`, fontSize:10, fontFamily:monoFont, color: tokens.spacingSystem ? '#34d399' : '#7dd3fc' }}>
-              <span style={{ width:5, height:5, borderRadius:'50%', background: tokens.spacingSystem ? '#34d399' : '#38bdf8', animation:'pulse-dot 2s infinite' }} />
-              {tokens.spacingSystem ? 'AI + Physical' : 'AI Extracted'}
+            <p style={{ ...cellLabelStyle, marginBottom:0 }}>Blueprint Preview</p>
+            <div style={{
+              display:'inline-flex', alignItems:'center', gap:5,
+              padding:'3px 10px', borderRadius:100,
+              background: tokens.uiBlueprint ? 'rgba(52,211,153,.08)' : 'rgba(255,255,255,.04)',
+              border: `1px solid ${tokens.uiBlueprint ? 'rgba(52,211,153,.25)' : 'rgba(255,255,255,.08)'}`,
+              fontSize:10, fontFamily:monoFont,
+              color: tokens.uiBlueprint ? '#34d399' : 'rgba(255,255,255,.35)',
+            }}>
+              <span style={{
+                width:5, height:5, borderRadius:'50%',
+                background: tokens.uiBlueprint ? '#34d399' : 'rgba(255,255,255,.25)',
+                animation: tokens.uiBlueprint ? 'pulse-dot 2s infinite' : 'none',
+              }} />
+              {tokens.uiBlueprint
+                ? `${tokens.uiBlueprint.sections.length} sections`
+                : 'No blueprint'}
             </div>
           </div>
 
           <div style={{ borderRadius:12, overflow:'hidden', border:'1px solid rgba(255,255,255,.065)', height:260 }}>
-            <MockPage tokens={tokens} />
+            <BlueprintRenderer tokens={tokens} />
           </div>
 
           <div style={{ display:'flex', gap:8, marginTop:14, flexWrap:'wrap' }}>
             {[
-              { key:'css',  label:'Copy CSS Vars',  doneLabel:'✓ 已复制', color:'rgba(99,91,255,.1)',    border:'rgba(99,91,255,.25)',  text:'#a5a0ff', fn: () => void navigator.clipboard.writeText(buildCSSVars(tokens)) },
-              { key:'tw',   label:'Tailwind Config', doneLabel:'✓ 已复制', color:'rgba(56,189,248,.08)', border:'rgba(56,189,248,.2)',  text:'#7dd3fc', fn: () => void navigator.clipboard.writeText(buildTailwind(tokens)) },
-              { key:'json', label:'Export JSON',      doneLabel:'✓ 已下载', color:'rgba(167,139,250,.08)',border:'rgba(167,139,250,.2)', text:'#c4b5fd', fn: () => downloadJSON(tokens, siteUrl ?? '') },
+              { key:'css',  label:'Copy CSS Vars',   doneLabel:'✓ 已复制', color:'rgba(99,91,255,.1)',    border:'rgba(99,91,255,.25)',  text:'#a5a0ff', fn: () => void navigator.clipboard.writeText(buildCSSVars(tokens)) },
+              { key:'tw',   label:'Tailwind Config',  doneLabel:'✓ 已复制', color:'rgba(56,189,248,.08)', border:'rgba(56,189,248,.2)',  text:'#7dd3fc', fn: () => void navigator.clipboard.writeText(buildTailwind(tokens)) },
+              { key:'json', label:'Export JSON',       doneLabel:'✓ 已下载', color:'rgba(167,139,250,.08)',border:'rgba(167,139,250,.2)', text:'#c4b5fd', fn: () => downloadJSON(tokens, siteUrl ?? '') },
             ].map(({ key, label, doneLabel, color, border, text, fn }) => (
               <button key={key} onClick={() => doExport(key, fn)}
                 style={{ flex:'1 1 120px', height:36, background: color, border:`1px solid ${border}`, borderRadius:9, color: text, fontSize:12, fontFamily:monoFont, cursor:'pointer', transition:'filter .2s' }}
@@ -1414,7 +1161,7 @@ function BentoGrid({ tokens, siteUrl }: { tokens: DesignTokens; siteUrl?: string
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
-// § 15  ComponentPreview tab
+// § 10  ComponentPreview tab
 // ─────────────────────────────────────────────────────────────────────────────
 
 function ComponentPreview({ tokens }: { tokens: DesignTokens }) {
@@ -1502,7 +1249,7 @@ function ComponentPreview({ tokens }: { tokens: DesignTokens }) {
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
-// § 16  ComparisonSlider tab
+// § 11  ComparisonSlider tab
 // ─────────────────────────────────────────────────────────────────────────────
 
 function ComparisonSlider({ tokens, siteUrl }: { tokens: DesignTokens; siteUrl: string }) {
@@ -1553,7 +1300,7 @@ function ComparisonSlider({ tokens, siteUrl }: { tokens: DesignTokens; siteUrl: 
           </div>
 
           <div style={{ position:'absolute', inset:0, overflow:'hidden', clipPath:`inset(0 0 0 ${position}%)` }}>
-            <MockPage tokens={tokens} />
+            <BlueprintRenderer tokens={tokens} />
             <div style={{ position:'absolute', bottom:12, right:12, borderRadius:100, background:'rgba(124,109,240,.8)', padding:'3px 12px', fontSize:11, fontFamily:monoFont, color:'#fff', backdropFilter:'blur(8px)' }}>
               AI Extracted
             </div>
@@ -1578,7 +1325,7 @@ function ComparisonSlider({ tokens, siteUrl }: { tokens: DesignTokens; siteUrl: 
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
-// § 17  ThemePreview — top-level export
+// § 12  ThemePreview — top-level export
 // ─────────────────────────────────────────────────────────────────────────────
 
 type TabId = 'palette' | 'preview' | 'compare';
@@ -1669,7 +1416,6 @@ export function ThemePreview({ tokens, siteUrl }: ThemePreviewProps) {
 
       <style>{`
         @keyframes spin    { to { transform: rotate(360deg); } }
-        @keyframes shimmer { 0%,100% { background-position: 200% center; } 50% { background-position: 0% center; } }
         @keyframes fade-up { from { opacity:0; transform:translateY(8px); } to { opacity:1; transform:none; } }
         @keyframes pulse-dot { 0%,100% { opacity:1; } 50% { opacity:0.4; } }
       `}</style>

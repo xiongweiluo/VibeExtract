@@ -237,4 +237,48 @@ export interface DesignTokens {
     /** Number of matched UI elements using this exact shadow */
     frequency: number;
   }>;
+
+  /**
+   * Structural UI blueprint produced by the hybrid restoration engine.
+   * Each section maps to a top-level page region with Tailwind layout classes
+   * and a component inventory derived exclusively from Physical Data assets.
+   * Intended for direct consumption by the preview rendering engine.
+   */
+  uiBlueprint?: {
+    sections: Array<{
+      /** Unique kebab-case identifier, e.g. "hero", "feature-grid-1" */
+      id: string;
+      /** Semantic page region type */
+      semanticType:
+        | 'nav'
+        | 'hero'
+        | 'feature-grid'
+        | 'testimonials'
+        | 'pricing'
+        | 'cta-banner'
+        | 'content'
+        | 'footer'
+        | 'sidebar'
+        | 'other';
+      /**
+       * Tailwind utility string reproducing this section's layout.
+       * Uses arbitrary-value syntax for non-standard spacings: px-[28px], gap-[20px].
+       * Color values reference Physical Data CSS variables: bg-[var(--color-bg-page)].
+       */
+      layoutClasses: string;
+      /** Z-index tier: base = normal flow, floating = sticky/fixed, overlay = modal/drawer */
+      zLayer: 'base' | 'floating' | 'overlay';
+      /** Visible components within this section */
+      components: Array<{
+        /** Semantic role of this component within the section */
+        role: string;
+        /** Tailwind utility classes for this component */
+        classes: string;
+        /** Extracted text content for leaf text nodes */
+        content?: string;
+        /** URL or CSS variable reference from Physical Data assets — never invented */
+        assetRef?: string;
+      }>;
+    }>;
+  };
 }
