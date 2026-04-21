@@ -21,6 +21,7 @@ interface PhysicalContext {
     hero:   { present: boolean; headline: string; ctaCount: number };
     cards:  { present: boolean; gridColumns: number; hasShadow: boolean };
     footer: { present: boolean; columns: number };
+    layoutConstraints?: Array<{ role: string; classes: string }>;
   };
   zIndexLayers?: ZIndexLayer[];
 }
@@ -124,6 +125,15 @@ function buildPhysicalDataBlock(ctx: PhysicalContext | undefined): string {
     parts.push(`  Hero  : present=${sk.hero.present}  headline="${sk.hero.headline.slice(0, 60)}"  ctas=${sk.hero.ctaCount}`);
     parts.push(`  Cards : present=${sk.cards.present}  columns=${sk.cards.gridColumns}  hasShadow=${sk.cards.hasShadow}`);
     parts.push(`  Footer: present=${sk.footer.present}  columns=${sk.footer.columns}`);
+
+    if (sk.layoutConstraints && sk.layoutConstraints.length > 0) {
+      parts.push('');
+      parts.push('  // USE THESE EXACT FLEX/GRID CLASSES FOR THESE CONTAINERS');
+      for (const lc of sk.layoutConstraints) {
+        parts.push(`  Container <${lc.role}> layout: "${lc.classes}"`);
+      }
+    }
+
     parts.push('');
   }
 
@@ -611,15 +621,19 @@ export async function extractDesignSystem(
   }
 
   const raw = blueprintBlock.text.trim();
-  const jsonText = raw
-    .replace(/^```(?:json)?\s*/i, '')
-    .replace(/\s*```$/i, '')
-    .trim();
+  const firstBrace = raw.indexOf('{');
+  const lastBrace = raw.lastIndexOf('}');
+
+  let jsonText = raw;
+  if (firstBrace !== -1 && lastBrace !== -1 && lastBrace > firstBrace) {
+    jsonText = raw.substring(firstBrace, lastBrace + 1);
+  }
 
   let tokens: DesignTokens;
   try {
     tokens = JSON.parse(jsonText) as DesignTokens;
-  } catch {
+  } catch (parseError) {
+    console.error("💥 JSON 解析彻底失败。原始返回文本是：\n", raw);
     throw new ExtractionError('Blueprint generation phase returned non-JSON output.', raw);
   }
 

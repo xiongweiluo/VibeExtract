@@ -11,7 +11,10 @@ const SYSTEM_PROMPT = `You are an expert UI/UX designer and design systems engin
 You receive a DesignTokens JSON object and a natural-language style request.
 Modify ONLY the mutable visual tokens to match the request, then return ONLY the updated JSON — no prose, no markdown fences, no explanations.
 
-Schema contract — never change the structure, only values within these paths:
+IMPORTANT: Do NOT include "uiBlueprint", "skeleton", or "siteArchitecture" fields in your response.
+Return only the visual design token fields. The caller will preserve the original structural data.
+
+Schema contract — return ONLY these paths (no other top-level keys):
   color.brand.{primary,secondary,accent}       — 6-digit HEX
   color.background.{page,surface,overlay}      — HEX or rgba() for overlay
   color.text.{primary,secondary,inverse}       — 6-digit HEX
@@ -27,10 +30,10 @@ Schema contract — never change the structure, only values within these paths:
 
 Rules:
 - All colour values must be 6-digit HEX strings starting with # (except overlay which may be rgba())
-- Do not add new keys; do not remove existing keys; preserve the complete token structure
+- Do not add new keys within each section; do not remove existing keys
 - Ensure legible contrast between background and text colours
 - Honour the spirit of the style request while keeping the token schema valid
-- Do not modify siteArchitecture, skeleton, spacingSystem, or typographyScale fields`;
+- Omit uiBlueprint, skeleton, and siteArchitecture entirely — they are preserved server-side`;
 
 export async function POST(req: NextRequest): Promise<Response> {
   let body: unknown;
@@ -49,6 +52,13 @@ export async function POST(req: NextRequest): Promise<Response> {
     return Response.json({ error: 'Missing prompt' }, { status: 400 });
   }
 
+  // Strip large structural fields before sending to LLM to reduce input tokens
+  const { uiBlueprint, skeleton, siteArchitecture, ...visualTokens } = tokens as DesignTokens & {
+    uiBlueprint?: unknown;
+    skeleton?: unknown;
+    siteArchitecture?: unknown;
+  };
+
   try {
     const message = await client.messages.create({
       model: MODEL,
@@ -57,25 +67,39 @@ export async function POST(req: NextRequest): Promise<Response> {
       messages: [
         {
           role: 'user',
-          content: `Current design tokens:\n${JSON.stringify(tokens, null, 2)}\n\nStyle request: ${prompt.trim()}`,
+          content: `Current design tokens:\n${JSON.stringify(visualTokens, null, 2)}\n\nStyle request: ${prompt.trim()}`,
         },
       ],
     });
 
-    const raw     = message.content[0]?.type === 'text' ? message.content[0].text : '';
-    const cleaned = raw
-      .replace(/^```(?:json)?\s*/i, '')
-      .replace(/\s*```$/, '')
-      .trim();
+    const rawText = message.content[0]?.type === 'text' ? message.content[0].text : '';
 
-    let updatedTokens: DesignTokens;
-    try {
-      updatedTokens = JSON.parse(cleaned);
-    } catch {
-      return Response.json({ error: 'AI returned malformed JSON', raw }, { status: 502 });
+    const firstBrace = rawText.indexOf('{');
+    const lastBrace  = rawText.lastIndexOf('}');
+
+    let jsonText = rawText;
+    if (firstBrace !== -1 && lastBrace !== -1 && lastBrace > firstBrace) {
+      jsonText = rawText.substring(firstBrace, lastBrace + 1);
     }
 
-    return Response.json({ tokens: updatedTokens });
+    let newTokens: Partial<DesignTokens>;
+    try {
+      newTokens = JSON.parse(jsonText);
+    } catch (parseError) {
+      console.error("💥 Vibe Edit JSON 解析彻底失败。原始返回文本是：\n", rawText);
+      return Response.json({ error: 'Vibe Edit returned malformed JSON.', raw: rawText }, { status: 502 });
+    }
+
+    // Deep merge: apply LLM visual changes, then restore original structural fields
+    const finalTokens: DesignTokens = {
+      ...tokens,
+      ...newTokens,
+      ...(siteArchitecture !== undefined && { siteArchitecture }),
+      ...(skeleton !== undefined && { skeleton }),
+      ...(uiBlueprint !== undefined && { uiBlueprint }),
+    } as DesignTokens;
+
+    return Response.json({ tokens: finalTokens });
   } catch (err) {
     const msg = err instanceof Error ? err.message : String(err);
     return Response.json({ error: msg }, { status: 500 });

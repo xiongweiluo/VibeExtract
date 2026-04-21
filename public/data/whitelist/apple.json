@@ -1,0 +1,396 @@
+{
+  "color": {
+    "brand": {
+      "primary": "#0066cc",
+      "secondary": "#1d1d1f",
+      "accent": "#0066cc"
+    },
+    "background": {
+      "page": "#f5f5f7",
+      "surface": "#f5f5f7",
+      "overlay": "rgba(0,0,0,0.5)"
+    },
+    "text": {
+      "primary": "#1d1d1f",
+      "secondary": "#6e6e73",
+      "inverse": "#ffffff"
+    },
+    "border": "#e0e0e5",
+    "status": {
+      "success": "#10B981",
+      "warning": "#F59E0B",
+      "error": "#EF4444"
+    }
+  },
+  "typography": {
+    "families": {
+      "body": "SF Pro Text, sans-serif",
+      "heading": "SF Pro Display, sans-serif",
+      "mono": "ui-monospace, monospace"
+    },
+    "weights": {
+      "regular": "400",
+      "medium": "400",
+      "semibold": "600",
+      "bold": "700"
+    },
+    "scale": {
+      "xs": {
+        "size": "12px",
+        "lineHeight": "1.3"
+      },
+      "sm": {
+        "size": "14px",
+        "lineHeight": "1.3"
+      },
+      "base": {
+        "size": "17px",
+        "lineHeight": "1.5"
+      },
+      "lg": {
+        "size": "18px",
+        "lineHeight": "1.0"
+      },
+      "xl": {
+        "size": "24px",
+        "lineHeight": "1.2"
+      },
+      "2xl": {
+        "size": "34px",
+        "lineHeight": "1.5"
+      },
+      "3xl": {
+        "size": "34px",
+        "lineHeight": "1.5"
+      },
+      "4xl": {
+        "size": "34px",
+        "lineHeight": "1.5"
+      }
+    }
+  },
+  "spacing": {
+    "baseUnit": 4,
+    "scale": {
+      "xs": "4px",
+      "sm": "8px",
+      "md": "16px",
+      "lg": "24px",
+      "xl": "32px",
+      "2xl": "48px",
+      "3xl": "64px"
+    }
+  },
+  "radius": {
+    "none": "0",
+    "sm": "4px",
+    "md": "8px",
+    "lg": "12px",
+    "xl": "16px",
+    "full": "9999px"
+  },
+  "shadow": {
+    "sm": "0 1px 2px rgba(0,0,0,0.06)",
+    "md": "0 4px 12px rgba(0,0,0,0.08)",
+    "lg": "0 8px 24px rgba(0,0,0,0.12)",
+    "xl": "0 20px 60px rgba(0,0,0,0.20)"
+  },
+  "siteArchitecture": {
+    "paradigm": "e-commerce",
+    "density": "spacious",
+    "motif": "clean minimal white-space, centered editorial hierarchy, pill-shaped CTAs, layered product photography, translucent nav backdrop",
+    "layout": {
+      "type": "single-column",
+      "navPosition": "top-fixed"
+    },
+    "visualWeight": {
+      "dominant": "imagery",
+      "hierarchy": "editorial"
+    }
+  },
+  "skeleton": {
+    "hero": {
+      "present": true,
+      "layout": "centered",
+      "headline": "Apple",
+      "ctaCount": 2
+    },
+    "nav": {
+      "brand": "Apple",
+      "items": [
+        "Store",
+        "Mac",
+        "iPad",
+        "iPhone",
+        "Watch",
+        "Vision"
+      ]
+    },
+    "cards": {
+      "present": true,
+      "gridColumns": 4,
+      "hasShadow": false
+    },
+    "footer": {
+      "present": true,
+      "columns": 1
+    }
+  },
+  "uiBlueprint": {
+    "sections": [
+      {
+        "id": "nav",
+        "semanticType": "nav",
+        "layoutClasses": "fixed top-0 inset-x-0 z-[9999] flex items-center justify-between px-[24px] h-[44px] bg-[var(--color-bg-page)]",
+        "zLayer": "floating",
+        "components": [
+          {
+            "role": "brand-logo",
+            "classes": "flex items-center shrink-0 h-[18px] w-auto text-[var(--color-text-primary)]",
+            "assetRef": "inline-svg:0"
+          },
+          {
+            "role": "nav-links",
+            "classes": "hidden md:flex items-center gap-[24px] text-[12px] font-[400] leading-[1.3] tracking-[-0.12px] text-[var(--color-text-primary)]",
+            "repeats": 9,
+            "children": [
+              {
+                "role": "nav-item",
+                "classes": "cursor-pointer hover:opacity-70 transition-opacity",
+                "content": "Store"
+              }
+            ]
+          },
+          {
+            "role": "nav-actions",
+            "classes": "flex items-center gap-[8px]",
+            "children": [
+              {
+                "role": "search-icon",
+                "classes": "h-[18px] w-[18px] text-[var(--color-text-primary)] cursor-pointer",
+                "assetRef": "inline-svg:1"
+              },
+              {
+                "role": "bag-icon",
+                "classes": "h-[18px] w-[18px] text-[var(--color-text-primary)] cursor-pointer",
+                "assetRef": "inline-svg:2"
+              }
+            ]
+          }
+        ]
+      },
+      {
+        "id": "promo-banner",
+        "semanticType": "banner",
+        "layoutClasses": "w-full flex items-center justify-center px-[24px] py-[8px] bg-[var(--color-bg-surface)] border-b border-[var(--color-border-default)]",
+        "zLayer": "base",
+        "components": [
+          {
+            "role": "promo-text",
+            "classes": "text-[12px] font-[400] leading-[1.3] tracking-[-0.12px] text-[var(--color-text-secondary)] text-center",
+            "content": "Recycle an eligible device in a store and get 10% off an Apple accessory.¹"
+          },
+          {
+            "role": "promo-link",
+            "classes": "ml-[4px] text-[12px] font-[400] leading-[1.3] tracking-[-0.12px] text-[var(--color-brand-primary)] underline-offset-2 cursor-pointer",
+            "content": "Find a store ›"
+          }
+        ]
+      },
+      {
+        "id": "hero-iphone",
+        "semanticType": "hero",
+        "layoutClasses": "w-full flex flex-col items-center pt-[88px] pb-[44px] bg-[var(--color-bg-page)]",
+        "zLayer": "base",
+        "components": [
+          {
+            "role": "hero-eyebrow",
+            "classes": "text-[34px] font-[600] leading-[1.5] tracking-[-0.374px] text-[var(--color-text-primary)] font-['SF_Pro_Display',_sans-serif] text-center",
+            "content": "iPhone"
+          },
+          {
+            "role": "hero-subheading",
+            "classes": "mt-[8px] text-[24px] font-[600] leading-[1.2] tracking-[0.216px] text-[var(--color-text-primary)] font-['SF_Pro_Display',_sans-serif] text-center",
+            "content": "Meet the latest iPhone lineup."
+          },
+          {
+            "role": "cta-group",
+            "classes": "mt-[24px] flex items-center gap-[16px]",
+            "children": [
+              {
+                "role": "cta-primary",
+                "classes": "px-[20px] py-[8px] rounded-[9999px] bg-[var(--color-brand-primary)] text-[var(--color-text-inverse)] text-[17px] font-[400] leading-[1.5] tracking-[-0.374px] cursor-pointer",
+                "content": "Learn more"
+              },
+              {
+                "role": "cta-secondary",
+                "classes": "px-[20px] py-[8px] rounded-[9999px] border border-[var(--color-brand-primary)] text-[var(--color-brand-primary)] text-[17px] font-[400] leading-[1.5] tracking-[-0.374px] bg-transparent cursor-pointer",
+                "content": "Shop iPhone"
+              }
+            ]
+          },
+          {
+            "role": "hero-product-image",
+            "classes": "mt-[44px] w-full max-w-[640px] h-auto object-contain"
+          }
+        ]
+      },
+      {
+        "id": "hero-macbook-neo",
+        "semanticType": "hero",
+        "layoutClasses": "w-full flex flex-col items-center pt-[84px] pb-[0px] bg-[var(--color-bg-page)]",
+        "zLayer": "base",
+        "components": [
+          {
+            "role": "hero-eyebrow",
+            "classes": "text-[34px] font-[600] leading-[1.5] tracking-[-0.374px] text-[var(--color-text-primary)] font-['SF_Pro_Display',_sans-serif] text-center",
+            "content": "MacBook Neo"
+          }
+        ]
+      }
+    ]
+  },
+  "spacingSystem": {
+    "baseUnit": 4,
+    "steps": [
+      "4px",
+      "8px",
+      "12px",
+      "16px",
+      "20px",
+      "24px",
+      "28px",
+      "40px",
+      "44px",
+      "84px",
+      "88px"
+    ],
+    "named": {
+      "xs": "4px",
+      "sm": "8px",
+      "md": "16px",
+      "lg": "24px",
+      "xl": "32px",
+      "2xl": "48px",
+      "3xl": "64px"
+    }
+  },
+  "typographyScale": {
+    "baseSize": "12px",
+    "baseSizeRem": "0.7059rem",
+    "families": [
+      "SF Pro Text",
+      "SF Pro Display"
+    ],
+    "steps": [
+      {
+        "px": "12px",
+        "rem": "0.7059rem",
+        "lineHeight": "1.3",
+        "weight": "600",
+        "letterSpacing": "-0.12px",
+        "role": "body"
+      },
+      {
+        "px": "14px",
+        "rem": "0.8235rem",
+        "lineHeight": "1.3",
+        "weight": "400",
+        "letterSpacing": "-0.224px",
+        "role": "body-lg"
+      },
+      {
+        "px": "17px",
+        "rem": "1rem",
+        "lineHeight": "1.5",
+        "weight": "400",
+        "letterSpacing": "-0.374px",
+        "role": "body-lg"
+      },
+      {
+        "px": "18px",
+        "rem": "1.0588rem",
+        "lineHeight": "1",
+        "weight": "300",
+        "letterSpacing": "0px",
+        "role": "h5"
+      },
+      {
+        "px": "24px",
+        "rem": "1.4118rem",
+        "lineHeight": "1.2",
+        "weight": "600",
+        "letterSpacing": "0.216px",
+        "role": "h4"
+      },
+      {
+        "px": "34px",
+        "rem": "2rem",
+        "lineHeight": "1.5",
+        "weight": "600",
+        "letterSpacing": "-0.374px",
+        "role": "h3"
+      }
+    ]
+  },
+  "shadowSpecs": [],
+  "assets": {
+    "images": [
+      "https://www.apple.com/v/home/cm/images/heroes/iphone-family/hero_iphone_family__fuz5j2v5xx6y_large.jpg",
+      "https://www.apple.com/v/home/cm/images/heroes/macbook-neo/hero_macbook_neo__gnm3snkti4a6_large.jpg",
+      "https://www.apple.com/v/home/a/images/logos/ipad-air-m4/hero_logo_ipad_air__ejixj9pic0uq_large.png",
+      "https://www.apple.com/v/home/cm/images/heroes/ipad-air-m4/hero_ipad_air_m4__ew8k92mk1w6e_large.jpg",
+      "https://www.apple.com/v/home/cm/images/promos/community-letter-from-tim/promo_apple_color_logo__co0os9ytesgi_large.jpg",
+      "https://www.apple.com/v/home/a/images/logos/apple-watch-series-11/promo_logo_apple_watch_series_11__d9br21pxygya_large.png",
+      "https://www.apple.com/v/home/cm/images/promos/apple-watch-series-11/promo_apple_watch_series_11__b63hxviqvonm_large.jpg",
+      "https://www.apple.com/v/home/cm/images/promos/macbook-air-m5/promo_macbook_air_m5__dibaetiq7nu6_large.jpg",
+      "https://www.apple.com/v/home/cm/images/promos/airpods-pro-3/promo_airpodspro_3__f6xmza7bglei_large.jpg",
+      "https://www.apple.com/v/home/a/images/logos/iphone-tradein/promo_logo_iphone_tradein__7y3gtai5az66_large.png",
+      "https://www.apple.com/v/home/cm/images/promos/iphone-tradein/promo_iphone_tradein__bugw15ka691e_large.jpg",
+      "https://www.apple.com/v/home/a/images/logos/apple-card/promo_apple_card__5cm7draujpey_large.png",
+      "https://www.apple.com/v/home/cm/images/promos/apple-card/promo_apple_card__5cm7draujpey_large.jpg",
+      "https://is1-ssl.mzstatic.com/image/thumb/Hj0w3h6_8b-NM4nnDwjfzQ/1250x668sr.jpg",
+      "https://www.apple.com/v/home/cj/images/tv-gallery/logo_hero_light__d7t8cya4x26a_small.png",
+      "https://is1-ssl.mzstatic.com/image/thumb/wY4kakhFPvD_8_pKkfu3AA/220x54.png",
+      "https://is1-ssl.mzstatic.com/image/thumb/pa_Dd2CLL-BlWQRqIurClw/1250x668sr.jpg",
+      "https://is1-ssl.mzstatic.com/image/thumb/J7bMKs9REENSizTYepOTeg/220x54.png",
+      "https://is1-ssl.mzstatic.com/image/thumb/Features/v4/5d/6b/8a/5d6b8a24-1ba8-6a08-8596-47d0cadacd5d/fc3f421a-0ae3-48fa-9cfc-bf3c4f6240e2.png/1250x668sr.jpg",
+      "https://is1-ssl.mzstatic.com/image/thumb/Features221/v4/f0/ac/1e/f0ac1e58-0027-49d0-378e-68470edfb0ec/3b7d6fac-0061-401c-9716-742245053fd0.png/220x54.png",
+      "https://is1-ssl.mzstatic.com/image/thumb/za7Mqkp-OSK_2BHWq8AtSQ/1250x668sr.jpg",
+      "https://is1-ssl.mzstatic.com/image/thumb/tvDS8CeEzaCZcSidQYYa0A/220x54.png",
+      "https://is1-ssl.mzstatic.com/image/thumb/Features211/v4/f2/4e/e3/f24ee3d7-7259-eb81-141c-ecc587d62dff/9d737dbe-b401-4b72-94ef-74c77cf5a95a.png/1250x668sr.jpg",
+      "https://is1-ssl.mzstatic.com/image/thumb/Kc1Xx3Z1QBOuXe1EHDu4TA/220x54.png",
+      "https://is1-ssl.mzstatic.com/image/thumb/OmAEHiPsBUBSNjqgm9ItjA/1250x668sr.jpg",
+      "https://is1-ssl.mzstatic.com/image/thumb/lvZ2b3skKnno7C-36QvFrg/220x54.png",
+      "https://is1-ssl.mzstatic.com/image/thumb/Features/v4/33/9e/cf/339ecfe7-f515-8594-2e48-d991803409ea/5a944fdc-acd7-47a8-89e7-274d84cf4276.png/1250x668sr.jpg",
+      "https://is1-ssl.mzstatic.com/image/thumb/Features211/v4/6f/41/7c/6f417c01-dbf7-6cdc-df62-f014aa88a673/e452926f-7b52-4c05-a07f-8e4939b1bf6b.png/220x54.png",
+      "https://is1-ssl.mzstatic.com/image/thumb/1j7GtUuN8pD_Pc4BBTPtRA/1250x668sr.jpg",
+      "https://is1-ssl.mzstatic.com/image/thumb/IqMhuTS1fKx3UhvREThPLw/220x54.png",
+      "https://is1-ssl.mzstatic.com/image/thumb/ubyMKBPSumJZe4z6Nn1A2A/1250x668sr.jpg",
+      "https://is1-ssl.mzstatic.com/image/thumb/2Pvq9Q1gy7cxOpfXK1_8Ew/220x54.png",
+      "https://is1-ssl.mzstatic.com/image/thumb/Video211/v4/4e/27/9c/4e279c73-4730-0f4c-aa2b-b9bab93e0387/ME_JAH_0324_artwork_en_ID317694_0.png/470x264.jpg",
+      "https://is1-ssl.mzstatic.com/image/thumb/Features211/v4/55/2b/5f/552b5f86-46e6-d848-ee06-5395bf09c206/83e0ed3d-c824-4ed9-9572-ae9e784568cb.png/226x226sr.jpg",
+      "https://is1-ssl.mzstatic.com/image/thumb/Features211/v4/5b/b3/4a/5bb34a60-695c-a96f-75ec-8a957fc2a20b/45899847-e52c-44a1-9ce5-09aedebb7a78.png/470x264.jpg",
+      "https://is1-ssl.mzstatic.com/image/thumb/Features221/v4/3a/35/1b/3a351b15-003b-1d33-4485-31a7743ce396/93e1559f-35e7-4d27-809b-ba20f344cb88.png/470x264.jpg",
+      "https://is1-ssl.mzstatic.com/image/thumb/Features/v4/88/e6/7e/88e67eb2-9cb8-1fcf-05c1-261e3b366f83/7ff434df-73c9-4924-9d89-e90999c9e6b5.png/226x226SC.DN01.jpg?l=en-US",
+      "https://is1-ssl.mzstatic.com/image/thumb/Features211/v4/53/55/d7/5355d758-e5b7-b406-f004-bb98d03ecb38/9388d284-2a0b-43e8-86e0-5852e8559d18.png/470x264.jpg",
+      "https://is1-ssl.mzstatic.com/image/thumb/Video211/v4/89/8b/57/898b57f2-4e30-d0c3-7ba7-e65a3744d81b/PI_MG_0242_artwork_en_ID317791_0.png/470x264.jpg",
+      "https://is1-ssl.mzstatic.com/image/thumb/Features/v4/54/4e/8c/544e8cd7-4a46-0a9f-7547-6f1005e75f5b/5634b5eb-ac2e-48a1-81bc-4587ffefba79.png/226x226SC.DN01.jpg?l=en-US",
+      "https://is1-ssl.mzstatic.com/image/thumb/Features221/v4/20/56/2b/20562bcb-a666-0f36-367d-7e188766eec6/85a24e2f-a12f-443a-a5c1-ddd78b076bc2.png/470x264.jpg"
+    ],
+    "svgs": [],
+    "gradients": [],
+    "inlineSvgs": [
+      "<svg width=\"18\" height=\"18\" viewBox=\"0 0 18 18\"><polyline fill=\"none\" stroke=\"currentColor\" stroke-width=\"1.2\" stroke-linecap=\"round\" stroke-linejoin=\"round\" points=\"3.5 15, 15 3.5\"></polyline><polyline fill=\"none\" stroke=\"currentColor\" stroke-width=\"1.2\" stroke-linecap=\"round\" stroke-linejoin=\"round\" points=\"3.5 3.5, 15 15\"></polyline></svg>",
+      "<svg height=\"48\" viewBox=\"0 0 9 48\" width=\"9\" xmlns=\"http://www.w3.org/2000/svg\"><path d=\"m1.5618 24.0621 6.5581-6.4238c.2368-.2319.2407-.6118.0088-.8486-.2324-.2373-.6123-.2407-.8486-.0088l-7 6.8569c-.1157.1138-.1807.2695-.1802.4316.001.1621.0674.3174.1846.4297l7 6.7241c.1162.1118.2661.1675.4155.1675.1577 0 .3149-.062.4326-.1846.2295-.2388.2222-.6187-.0171-.8481z\"></path></svg>",
+      "<svg height=\"44\" viewBox=\"0 0 14 44\" width=\"14\" xmlns=\"http://www.w3.org/2000/svg\"><path d=\"m13.0729 17.6825a3.61 3.61 0 0 0 -1.7248 3.0365 3.5132 3.5132 0 0 0 2.1379 3.2223 8.394 8.394 0 0 1 -1.0948 2.2618c-.6816.9812-1.3943 1.9623-2.4787 1.9623s-1.3633-.63-2.613-.63c-1.2187 0-1.6525.6507-2.644.6507s-1.6834-.9089-2.4787-2.0243a9.7842 9.7842 0 0 1 -1.6628-5.2776c0-3.0984 2.014-4.7405 3.9969-4.7405 1.0535 0 1.9314.6919 2.5924.6919.63 0 1.6112-.7333 2.8092-.7333a3.7579 3.7579 0 0 1 3.1604 1.5802zm-3.7284-2.8918a3.5615 3.5615 0 0 0 .8469-2.22 1.5353 1.5353 0 0 0 -.031-.32 3.5686 3.5686 0 0 0 -2.3445 1.2084 3.4629 3.4629 0 0 0 -.8779 2.1585 1.419 1.419 0 0 0 .031.2892 1.19 1.19 0 0 0 .2169.0207 3.0935 3.0935 0 0 0 2.1586-1.1368z\"></path></svg>",
+      "<svg height=\"48\" viewBox=\"0 0 17 48\" width=\"17\" xmlns=\"http://www.w3.org/2000/svg\"><path d=\"m15.5752 19.0792a4.2055 4.2055 0 0 0 -2.01 3.5376 4.0931 4.0931 0 0 0 2.4908 3.7542 9.7779 9.7779 0 0 1 -1.2755 2.6351c-.7941 1.1431-1.6244 2.2862-2.8878 2.2862s-1.5883-.734-3.0443-.734c-1.42 0-1.9252.7581-3.08.7581s-1.9611-1.0589-2.8876-2.3584a11.3987 11.3987 0 0 1 -1.9373-6.1487c0-3.61 2.3464-5.523 4.6566-5.523 1.2274 0 2.25.8062 3.02.8062.734 0 1.8771-.8543 3.2729-.8543a4.3778 4.3778 0 0 1 3.6822 1.841zm-6.8586-2.0456a1.3865 1.3865 0 0 1 -.2527-.024 1.6557 1.6557 0 0 1 -.0361-.337 4.0341 4.0341 0 0 1 1.0228-2.5148 4.1571 4.1571 0 0 1 2.7314-1.4078 1.7815 1.7815 0 0 1 .0361.373 4.1487 4.1487 0 0 1 -.9867 2.587 3.6039 3.6039 0 0 1 -2.5148 1.3236z\"></path></svg>",
+      "<svg height=\"44\" viewBox=\"0 0 30 44\" width=\"30\" xmlns=\"http://www.w3.org/2000/svg\"><path d=\"m26.5679 20.4629c1.002 0 1.67.738 1.693 1.857h-3.48c.076-1.119.779-1.857 1.787-1.857zm2.754 2.672v-.387c0-1.963-1.037-3.176-2.742-3.176-1.735 0-2.848 1.289-2.848 3.276 0 1.998 1.096 3.263 2.848 3.263 1.383 0 2.367-.668 2.66-1.746h-1.008c-.264.557-.814.856-1.629.856-1.072 0-1.769-.791-1.822-2.039v-.047zm-9.547-3.451h.96v.937h.094c.188-.615.914-1.049 1.752-1.049.164 0 .375.012.504.03v1.007c-.082-.023-.445-.058-.644-.058-.961 0-1.659 1.098-1.659 1.535v3.914h-1.007zm-4.27 5.519c-1.195 0-1.869-.867-1.869-2.361 0-1.5.674-2.361 1.869-2.361 1.196 0 1.87.861 1.87 2.361 0 1.494-.674 2.361-1.87 2.361zm0-5.631c-1.798 0-2.912 1.237-2.912 3.27 0 2.027 1.114 3.269 2.912 3.269 1.799 0 2.913-1.242 2.913-3.269 0-2.033-1.114-3.27-2.913-3.27zm-5.478-1.475v1.635h1.407v.843h-1.407v3.575c0 .744.282 1.06.938 1.06.182 0 .281-.006.469-.023v.849c-.199.035-.393.059-.592.059-1.301 0-1.822-.481-1.822-1.688v-3.832h-1.02v-.843h1.02v-1.635zm-8.103 5.694c.129.885.973 1.447 2.174 1.447 1.137 0 1.975-.615 1.975-1.453 0-.72-.527-1.177-1.693-1.47l-1.084-.282c-1.53-.386-2.192-1.078-2.192-2.279 0-1.436 1.201-2.408 2.988-2.408 1.635 0 2.854.972 2.942 2.338h-1.061c-.146-.867-.861-1.383-1.916-1.383-1.125 0-1.869.562-1.869 1.418 0 .662.463 1.043 1.629 1.342l.885.234c1.752.439 2.455 1.119 2.455 2.361 0 1.553-1.225 2.543-3.158 2.543-1.793 0-3.03-.949-3.141-2.408z\"></path></svg>",
+      "<svg height=\"48\" viewBox=\"0 0 9 48\" width=\"9\" xmlns=\"http://www.w3.org/2000/svg\"><path d=\"m8.1155 30.358a.6.6 0 1 1 -.831.8653l-7-6.7242a.6.6 0 0 1 -.0045-.8613l7-6.8569a.6.6 0 1 1 .84.8574l-6.5582 6.4238z\"></path></svg>",
+      "<svg height=\"10\" viewBox=\"0 0 10 10\" width=\"10\" xmlns=\"http://www.w3.org/2000/svg\"><path d=\"m4.6725 6.635-2.655-2.667a.445.445 0 0 1 -.123-.304.4331.4331 0 0 1 .427-.439h.006a.447.447 0 0 1 .316.135l2.357 2.365 2.356-2.365a.458.458 0 0 1 .316-.135.433.433 0 0 1 .433.433v.006a.4189.4189 0 0 1 -.123.3l-2.655 2.671a.4451.4451 0 0 1 -.327.14.464.464 0 0 1 -.328-.14z\"></path></svg>",
+      "<svg height=\"48\" viewBox=\"0 0 9 48\" width=\"9\" xmlns=\"http://www.w3.org/2000/svg\"><path d=\"m7.4382 24.0621-6.5581-6.4238c-.2368-.2319-.2407-.6118-.0088-.8486.2324-.2373.6123-.2407.8486-.0088l7 6.8569c.1157.1138.1807.2695.1802.4316-.001.1621-.0674.3174-.1846.4297l-7 6.7242c-.1162.1118-.2661.1675-.4155.1675-.1577 0-.3149-.062-.4326-.1846-.2295-.2388-.2222-.6187.0171-.8481l6.5537-6.2959z\"></path></svg>",
+      "<svg height=\"44\" viewBox=\"0 0 23 44\" width=\"23\" xmlns=\"http://www.w3.org/2000/svg\"><path d=\"m8.1558 25.9987v-6.457h-.0703l-2.666 6.457h-.8907l-2.666-6.457h-.0703v6.457h-.9844v-8.4551h1.2246l2.8945 7.0547h.0938l2.8945-7.0547h1.2246v8.4551zm2.5166-1.7696c0-1.1309.832-1.7812 2.3027-1.8691l1.8223-.1113v-.5742c0-.7793-.4863-1.207-1.4297-1.207-.7559 0-1.2832.2871-1.4238.7852h-1.0195c.1348-1.0137 1.1309-1.6816 2.4785-1.6816 1.541 0 2.4023.791 2.4023 2.1035v4.3242h-.9609v-.9318h-.0938c-.4102.6738-1.1016 1.043-1.9453 1.043-1.2246 0-2.1328-.7266-2.1328-1.8809zm4.125-.5859v-.5801l-1.6992.1113c-.9609.0645-1.3828.3984-1.3828 1.0312 0 .6445.5449 1.0195 1.2773 1.0195 1.0371.0001 1.8047-.6796 1.8047-1.5819zm6.958-2.0273c-.1641-.627-.7207-1.1367-1.6289-1.1367-1.1367 0-1.8516.9082-1.8516 2.3379 0 1.459.7266 2.3848 1.8516 2.3848.8496 0 1.4414-.3926 1.6289-1.1074h1.0195c-.1816 1.1602-1.125 2.0156-2.6426 2.0156-1.7695 0-2.9004-1.2832-2.9004-3.293 0-1.9688 1.125-3.2461 2.8945-3.2461 1.5352 0 2.4727.9199 2.6484 2.0449z\"></path></svg>",
+      "<svg height=\"48\" viewBox=\"0 0 9 48\" width=\"9\" xmlns=\"http://www.w3.org/2000/svg\"><path d=\"m8.1155 30.358a.6.6 0 1 1 -.831.8653l-7-6.7242a.6.6 0 0 1 -.0045-.8613l7-6.8569a.6.6 0 1 1 .84.8574l-6.5582 6.4238z\"></path></svg>"
+    ]
+  }
+}

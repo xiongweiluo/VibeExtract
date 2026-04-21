@@ -1,0 +1,325 @@
+# Design Spec — linear.app
+
+> **Extracted:** Mon, 20 Apr 2026 17:21:25 GMT
+> **URL:** https://linear.app/
+> **Paradigm:** saas-app · **Density:** comfortable · **Motif:** dark-mode-first, high-contrast typography, minimal chrome, product-UI-as-hero, monochromatic near-black surfaces
+
+---
+
+## Visual Weight Verdict
+
+**TYPE DOMINANT**
+
+This SaaS application is sustained by **editorial typography and text hierarchy**.
+
+### Evidence
+- 24 image assets detected (heavy image density)
+- Hero section: asymmetric layout — "The productdevelopmentsystem for teamsand agentsThe product …"
+- Card grid: 4-column, flat
+- Layout: single-column / nav top-fixed
+- Density: comfortable (4px base grid)
+- Visual hierarchy: editorial
+
+---
+
+## Color Architecture
+
+| Role | Value | Token |
+|---|---|---|
+| Brand Primary | #ffffff | `#ffffff` |
+| Brand Secondary | #23252a | `#23252a` |
+| Brand Accent | #5e6ad2 | `#5e6ad2` |
+| Background Page | #0a0a0a | `#0a0a0a` |
+| Background Surface | #17191e | `#17191e` |
+| Background Overlay | rgba(0,0,0,0.4) | rgba(0,0,0,0.4) |
+| Text Primary | #ffffff | `#ffffff` |
+| Text Secondary | #8a8f98 | `#8a8f98` |
+| Text Inverse | #0a0a0a | `#0a0a0a` |
+| Border | #23252a | `#23252a` |
+| Status Success | #10B981 | `#10B981` |
+| Status Warning | #F59E0B | `#F59E0B` |
+| Status Error | #EF4444 | `#EF4444` |
+
+---
+
+## Typography System
+
+**Families:** body — `'Inter Variable', sans-serif` · heading — `'Inter Variable', sans-serif` · mono — `'Berkeley Mono', ui-monospace, monospace`
+
+| Level | Size | Line Height |
+|---|---|---|
+| `xs` | 10px | 1.5 |
+| `sm` | 12px | 1.4 |
+| `base` | 15px | 1.6 |
+| `lg` | 16px | 1.5 |
+| `xl` | 13px | 1.2 |
+| `2xl` | 13px | 1.2 |
+| `3xl` | 13px | 1.2 |
+| `4xl` | 64px | 1 |
+
+---
+
+## Spacing
+
+- **Base unit:** 4px
+- **Scale:** xs=4px · sm=8px · md=16px · lg=24px · xl=32px · 2xl=48px · 3xl=64px
+
+---
+
+## Site Architecture
+
+| Property | Value |
+|---|---|
+| Paradigm | saas-app |
+| Layout | single-column |
+| Nav position | top-fixed |
+| Density | comfortable |
+| Dominant element | typography |
+| Visual hierarchy | editorial |
+
+---
+
+## Skeleton
+
+| Component | Details |
+|---|---|
+| Hero | present · asymmetric · "The productdevelopmentsystem for teamsand agentsThe product " · 0 CTAs |
+| Nav | brand: "Product" · items: Resources, Customers, Pricing, Now, Contact, Log in |
+| Cards | 4-column grid · flat |
+| Footer | 1 column |
+
+---
+
+## Physical Measurements
+
+### Spacing (computed CSS)
+- **Base unit:** 4px
+- **Measured steps:** 4px · 8px · 12px · 16px · 20px · 24px · 28px · 32px · 36px · 40px · 48px · 52px · 60px · 68px
+- **Named scale:** xs=4px sm=8px md=16px lg=24px xl=32px 2xl=48px 3xl=64px
+
+### Typography (computed CSS)
+- **Root body size:** 16px / 1rem
+- **Detected families:** Inter Variable, Berkeley Mono
+
+| px | rem | Line Height | Weight | Letter Spacing | Role |
+|---|---|---|---|---|---|
+| 10px | 0.625rem | 1.5 | 510 | 0px | label |
+| 12px | 0.75rem | 1.4 | 400 | 0px | label |
+| 13px | 0.8125rem | 1.2 | 400 | 0px | body-sm |
+| 15px | 0.9375rem | 1.6 | 400 | -0.165px | body |
+| 16px | 1rem | 1.5 | 400 | 0px | body |
+| 64px | 4rem | 1 | 510 | -1.408px | h2 |
+
+### Box Shadows (measured from UI components)
+
+| Frequency | CSS Value |
+|---|---|
+| ×16 | `rgba(0, 0, 0, 0.03) 0px 1.2px 0px 0px` |
+| ×5 | `rgb(35, 37, 42) 0px 0px 0px 1px inset` |
+| ×1 | `rgba(0, 0, 0, 0.4) 0px 1px 0px 0px` |
+| ×1 | `rgba(0, 0, 0, 0.33) 0px 0px 0px 1px` |
+
+---
+
+## Asset Inventory
+
+### Images (24)
+- https://linear.app/cdn-cgi/imagedelivery/fO02fVwohEs9s9UHFwon6A/c7b144b7-4ef0-4991-9bcb-617c6a37d200/f=auto,dpr=2,q=95,fit=scale-down,metadata=none
+- https://linear.app/cdn-cgi/imagedelivery/fO02fVwohEs9s9UHFwon6A/6600ca96-e49b-4fd9-c03a-7979faddad00/f=auto,dpr=2,q=95,fit=scale-down,metadata=none
+- https://linear.app/cdn-cgi/imagedelivery/fO02fVwohEs9s9UHFwon6A/c7fa8f5f-d439-4329-6a65-de549b51e300/f=auto,dpr=2,q=95,fit=scale-down,metadata=none
+- https://webassets.linear.app/images/ornj730p/production/f79251b06e9edeeacbf2875384defe629e000b3c-352x352.png?w=72&q=95&auto=format&dpr=2
+- https://linear.app/cdn-cgi/imagedelivery/fO02fVwohEs9s9UHFwon6A/f28b59f4-538c-4517-cfd7-510913015200/f=auto,dpr=2,q=95,fit=scale-down,metadata=none
+- https://linear.app/cdn-cgi/imagedelivery/fO02fVwohEs9s9UHFwon6A/f9ed2721-1966-4abc-129b-93aaac1a6200/f=auto,dpr=2,q=95,fit=scale-down,metadata=none
+- https://linear.app/cdn-cgi/imagedelivery/fO02fVwohEs9s9UHFwon6A/086b510a-f5da-414b-bc9d-228afb968600/f=auto,dpr=2,q=95,fit=scale-down,metadata=none
+- https://linear.app/cdn-cgi/imagedelivery/fO02fVwohEs9s9UHFwon6A/302b16a5-f9ca-42f2-dbae-3c76f19b2d00/f=auto,dpr=2,q=95,fit=scale-down,metadata=none
+- https://linear.app/cdn-cgi/imagedelivery/fO02fVwohEs9s9UHFwon6A/1eb8f8b2-3593-473f-ba8a-acac99aa0300/f=auto,dpr=2,q=95,fit=scale-down,metadata=none
+- https://linear.app/cdn-cgi/imagedelivery/fO02fVwohEs9s9UHFwon6A/6550520e-9e50-441d-b9e8-579be321f900/f=auto,dpr=2,q=95,fit=scale-down,metadata=none
+- https://linear.app/cdn-cgi/imagedelivery/fO02fVwohEs9s9UHFwon6A/4d3381aa-fb2f-4d3d-1a06-957fc616d400/f=auto,dpr=2,q=95,fit=scale-down,metadata=none
+- https://linear.app/cdn-cgi/imagedelivery/fO02fVwohEs9s9UHFwon6A/7ea107e7-c1a0-4c99-756d-5837fd91f200/f=auto,dpr=2,q=95,fit=scale-down,metadata=none
+- https://linear.app/cdn-cgi/imagedelivery/fO02fVwohEs9s9UHFwon6A/c8aeedda-7726-4a4f-226a-f573f85d8d00/f=auto,dpr=2,q=95,fit=scale-down,metadata=none
+- https://linear.app/cdn-cgi/imagedelivery/fO02fVwohEs9s9UHFwon6A/580cd9c0-2770-4fe4-1ad2-95c76fc6f000/f=auto,dpr=2,q=95,fit=scale-down,metadata=none
+- https://linear.app/cdn-cgi/imagedelivery/fO02fVwohEs9s9UHFwon6A/22210a73-581d-42db-d42a-bf2907860300/f=auto,dpr=2,q=95,fit=scale-down,metadata=none
+- https://linear.app/cdn-cgi/imagedelivery/fO02fVwohEs9s9UHFwon6A/7d7115d9-a0eb-4a92-5900-3ca3ee077d00/f=auto,dpr=2,q=95,fit=scale-down,metadata=none
+- https://linear.app/cdn-cgi/imagedelivery/fO02fVwohEs9s9UHFwon6A/584d7dbd-ff4a-41bb-4fab-74fd5217a400/f=auto,dpr=2,q=95,fit=scale-down,metadata=none
+- https://linear.app/cdn-cgi/imagedelivery/fO02fVwohEs9s9UHFwon6A/13a0909f-186f-4d83-3fd3-d04883ec2d00/f=auto,dpr=2,q=95,fit=scale-down,metadata=none
+- https://linear.app/cdn-cgi/imagedelivery/fO02fVwohEs9s9UHFwon6A/e408d7c9-e3a3-4802-e4d4-51ed197c3a00/f=auto,dpr=2,q=95,fit=scale-down,metadata=none
+- https://linear.app/cdn-cgi/imagedelivery/fO02fVwohEs9s9UHFwon6A/a482eab9-69d1-412f-f2ce-8f72444fcb00/f=auto,dpr=2,q=95,fit=scale-down,metadata=none
+_…and 4 more_
+
+### CSS Gradients (1)
+_Real background-image gradient values — use as-is in CSS._
+
+| Element | Gradient |
+|---|---|
+| `Header_header__hfMjL Header_header__hfMjL` | `linear-gradient(rgba(11, 11, 11, 0.8) 0px, oklab(0.149576 0.00000680983 0.00000298768 / 0.761905) 100%)` |
+
+### Inline SVGs (10 captured)
+_Raw <svg> source — icons, logos, illustrations. Embed directly in generated HTML._
+
+<details><summary>SVG #1 (4617 chars)</summary>
+
+```html
+<svg height="22" viewBox="0 0 400 100" fill="currentColor" size="22" color="currentColor" aria-label="Linear"><path fill-rule="evenodd" clip-rule="evenodd" d="M12.9266 16.3713c-.5283.5806-.4933 1.4714.0617 2.0265l68.5946 68.5946c.5551.555 1.4459.59 2.0265.0617 10.0579-9.1522 16.3713-22.3478 16.3713-37.0179C99.9807 22.402 77.5788 0 49.9445 0 35.2744 0 22.0788 6.31337 12.9266 16.3713ZM4.35334 29.3894c-.25348.5589-.12567 1.2142.30824 1.6481L68.9432 95.3191c.4339.4339 1.0892.5617 1.6481.3083 1.485-.6736 2.9312-1.4176 4.3344-2.2277.8341-.4815.9618-1.6195.2808-2.3005L8.88146 24.7742c-.68097-.681-1.81894-.5532-2.30045.2808-.81013 1.4032-1.55411 2.8494-2.22767 4.3344ZM.453579 47.796c-.300979-.301-.46112014-.7158-.4327856-1.1405.1327026-1.9891.3816396-3.9463.7400796-5.865.214926-1.1505 1.620727-1.5497 2.448307-.7222L59.9124 96.7715c.8275.8276.4283 2.2334-.7222 2.4483-1.9187.3585-3.8759.6074-5.865.7401-.4247.0283-.8395-.1318-1.1405-.4328L.453579 47.796ZM3.93331 61.7589c-1.0331-1.0331-2.70028-.1429-2.32193 1.2683C6.22104 80.2203 19.7604 93.7597 36.9535 98.3693c1.4112.3784 2.3014-1.2888 1.2683-2.3219L3.93331 61.7589ZM201.602 27.535c3.587 0 6.494-2.918 6.494-6.5175S205.189 14.5 201.602 14.5c-3.586 0-6.493 2.918-6.493 6.5175s2.907 6.5175 6.493 6.5175Zm-55.621 56.8396V14.5039h11.54v59.648h31.115v10.2227h-42.655Zm82.136-28.511v28.511h-11.166V34.8555h11.026v8.4876l.14-.0937c1.121-2.6573 2.928-4.8769 5.42-6.6589 2.491-1.8132 5.668-2.7198 9.531-2.7198 3.426 0 6.54.766 9.344 2.2978 2.803 1.5006 5.045 3.7045 6.727 6.6119 1.682 2.9074 2.523 6.4713 2.523 10.6916v30.9026h-11.166V55.0195c0-3.7514-.997-6.5963-2.99-8.5345-1.962-1.9695-4.594-2.9543-7.896-2.9543-2.118 0-4.049.4377-5.793 1.313-1.744.8754-3.13 2.2196-4.158 4.0328-1.028 1.8132-1.542 4.1422-1.542 6.9871Zm101.105 27.6669c2.554 1.0942 5.482 1.6413 8.783 1.6413 2.71 0 5.03-.3439 6.961-1.0317 1.932-.719 3.52-1.6725 4.766-2.8605 1.277-1.1879 2.289-2.4853 3.037-3.8921h.187v6.9871h10.699V50.2833c0-2.4072-.468-4.6111-1.402-6.6119-.934-2.0008-2.289-3.7358-4.065-5.2051-1.744-1.4694-3.862-2.5948-6.354-3.3763-2.491-.8129-5.295-1.2193-8.409-1.2193-4.267 0-7.958.7347-11.073 2.204-3.084 1.4381-5.497 3.3763-7.242 5.8148-1.744 2.4384-2.694 5.1895-2.85 8.2531h10.793c.124-1.438.623-2.7198 1.495-3.8452.872-1.1254 2.056-2.0008 3.551-2.626 1.495-.6565 3.223-.9848 5.186-.9848 1.962 0 3.628.3283 4.999.9848 1.401.6565 2.476 1.5475 3.223 2.6729.748 1.1254 1.122 2.4384 1.122 3.939v.3752c0 1.1254-.39 1.9538-1.168 2.4853-.748.5314-2.025.9222-3.831 1.1723-1.776.2501-4.205.5471-7.289.891-2.523.2813-4.952.7034-7.288 1.2661-2.336.5627-4.423 1.3912-6.261 2.4853-1.806 1.0942-3.239 2.5479-4.298 4.3611-1.059 1.8132-1.588 4.1422-1.588 6.987 0 3.2826.747 6.0336 2.242 8.2532 1.495 2.1884 3.52 3.8453 6.074 4.9707Zm18.081-8.3001c-1.807.9691-4.034 1.4537-6.681 1.4537-2.679 0-4.813-.5627-6.401-1.6881-1.589-1.1567-2.383-2.7355-2.383-4.7362 0-1.5631.436-2.8293 1.308-3.7984.904-.9691 2.087-1.735 3.551-2.2977 1.464-.5628 3.052-.9535 4.765-1.1724 1.246-.1875 2.461-.3751 3.645-.5627 1.183-.2188 2.289-.422 3.317-.6096 1.028-.2188 1.9-.4377 2.616-.6565.748-.2188 1.293-.4533 1.635-.7034v5.5334c0 1.9382-.451 3.7202-1.355 5.3458-.872 1.5944-2.211 2.8917-4.017 3.8921Zm26.094 9.1442V34.8555h10.745v8.1594h.141c.903-2.8136 2.32-4.955 4.251-6.4244 1.962-1.5005 4.532-2.2508 7.709-2.2508.779 0 1.48.0312 2.102.0938.655.0312 1.2.0625 1.636.0937v10.082c-.405-.0625-1.122-.1406-2.149-.2344-1.028-.0938-2.118-.1407-3.271-.1407-1.838 0-3.519.422-5.046 1.2661-1.526.8441-2.741 2.1415-3.644 3.8921-.872 1.7195-1.308 3.8922-1.308 6.5182v28.4641h-11.166Zm-177.401 0V34.8555h11.166v49.5191h-11.166Zm84.238-2.204c3.582 2.2196 7.834 3.3294 12.755 3.3294 3.8 0 7.257-.6878 10.372-2.0633 3.146-1.4068 5.762-3.3294 7.849-5.7678 2.087-2.4697 3.442-5.3146 4.065-8.5346h-10.512c-.468 1.4693-1.231 2.7667-2.29 3.8921-1.027 1.0942-2.32 1.9539-3.877 2.5792-1.558.6252-3.364.9378-5.42.9378-2.772 0-5.155-.6252-7.148-1.8757-1.962-1.2505-3.457-2.9855-4.485-5.2051-.933-2.043-1.443-4.3564-1.529-6.9402h35.915v-3.0012c0-3.8139-.561-7.284-1.682-10.4102-1.121-3.1575-2.71-5.8773-4.766-8.1594-2.055-2.3134-4.531-4.0953-7.428-5.3458-2.866-1.2505-6.058-1.8757-9.578-1.8757-4.578 0-8.627 1.1098-12.147 3.3294-3.52 2.2196-6.276 5.2833-8.27 9.191-1.993 3.9078-2.99 8.3782-2.99 13.4114 0 5.0019.966 9.4568 2.897 13.3645 1.931 3.8765 4.688 6.9246 8.269 9.1442Zm23.501-32.7783c-1.028-2.1258-2.492-3.767-4.392-4.9237-1.9-1.1567-4.142-1.7351-6.728-1.7351-2.554 0-4.781.5784-6.681 1.7351-1.868 1.1567-3.332 2.7979-4.391 4.9237-.756 1.5396-1.234 3.2903-1.434 5.2521h25.059c-.2-1.9618-.678-3.7125-1.433-5.2521Z"></path></svg>
+```
+
+</details>
+<details><summary>SVG #2 (422 chars)</summary>
+
+```html
+<svg width="16" height="16" viewBox="0 0 16 16" fill="currentColor" xmlns="http://www.w3.org/2000/svg"><rect x="1" y="7.5" width="14" height="1" rx="0.5" style="transform-origin:center;transition:160ms var(--ease-out-quad);transform:translateY(-3.5px)"></rect><rect x="1" y="7.5" width="14" height="1" rx="0.5" style="transform-origin:center;transition:160ms var(--ease-out-quad);transform:translateY(3.5px)"></rect></svg>
+```
+
+</details>
+<details><summary>SVG #3 (1058 chars)</summary>
+
+```html
+<svg width="13" height="13" viewBox="0 0 100 100" fill="#E2E4E6" aria-label="Linear logo" color="#E2E4E6"><path d="M1.22541 61.5228c-.2225-.9485.90748-1.5459 1.59638-.857L39.3342 97.1782c.6889.6889.0915 1.8189-.857 1.5964C20.0515 94.4522 5.54779 79.9485 1.22541 61.5228ZM.00189135 46.8891c-.01764375.2833.08887215.5599.28957165.7606L52.3503 99.7085c.2007.2007.4773.3075.7606.2896 2.3692-.1476 4.6938-.46 6.9624-.9259.7645-.157 1.0301-1.0963.4782-1.6481L2.57595 39.4485c-.55186-.5519-1.49117-.2863-1.648174.4782-.465915 2.2686-.77832 4.5932-.92588465 6.9624ZM4.21093 29.7054c-.16649.3738-.08169.8106.20765 1.1l64.77602 64.776c.2894.2894.7262.3742 1.1.2077 1.7861-.7956 3.5171-1.6927 5.1855-2.684.5521-.328.6373-1.0867.1832-1.5407L8.43566 24.3367c-.45409-.4541-1.21271-.3689-1.54074.1832-.99132 1.6684-1.88843 3.3994-2.68399 5.1855ZM12.6587 18.074c-.3701-.3701-.393-.9637-.0443-1.3541C21.7795 6.45931 35.1114 0 49.9519 0 77.5927 0 100 22.4073 100 50.0481c0 14.8405-6.4593 28.1724-16.7199 37.3375-.3903.3487-.984.3258-1.3542-.0443L12.6587 18.074Z"></path></svg>
+```
+
+</details>
+<details><summary>SVG #4 (346 chars)</summary>
+
+```html
+<svg class="" style="--icon-color:var(--label-faint)" width="16" height="16" viewBox="0 0 16 16" fill="var(--label-faint)" role="img" focusable="false" aria-hidden="true" xmlns="http://www.w3.org/2000/svg"><path d="M4.53 5.47a.75.75 0 0 0-1.06 1.06l4 4a.75.75 0 0 0 1.054.007l4-3.903a.75.75 0 0 0-1.048-1.073l-3.47 3.385L4.53 5.47Z"></path></svg>
+```
+
+</details>
+<details><summary>SVG #5 (688 chars)</summary>
+
+```html
+<svg class="" style="--icon-color:currentColor" width="16" height="16" viewBox="0 0 16 16" fill="currentColor" role="img" focusable="false" aria-hidden="true" xmlns="http://www.w3.org/2000/svg"><path fill-rule="evenodd" clip-rule="evenodd" d="M7 2C9.76142 2 12 4.23858 12 7C12 8.11012 11.6375 9.13519 11.0254 9.96484L13.7803 12.7197L13.832 12.7764C14.0723 13.0709 14.0549 13.5057 13.7803 13.7803C13.5057 14.0549 13.0709 14.0723 12.7764 13.832L12.7197 13.7803L9.96484 11.0254C9.13519 11.6375 8.11012 12 7 12C4.23858 12 2 9.76142 2 7C2 4.23858 4.23858 2 7 2ZM7 3.5C5.067 3.5 3.5 5.067 3.5 7C3.5 8.933 5.067 10.5 7 10.5C8.933 10.5 10.5 8.933 10.5 7C10.5 5.067 8.933 3.5 7 3.5Z"></path></svg>
+```
+
+</details>
+<details><summary>SVG #6 (975 chars)</summary>
+
+```html
+<svg class="" style="--icon-color:currentColor" width="16" height="16" viewBox="0 0 16 16" fill="currentColor" role="img" focusable="false" aria-hidden="true" xmlns="http://www.w3.org/2000/svg"><path fill-rule="evenodd" clip-rule="evenodd" d="M7.25 1C7.66414 1 7.99988 1.33589 8 1.75C8 2.16421 7.66421 2.5 7.25 2.5H4.75C3.50745 2.5 2.50012 3.50744 2.5 4.75V11.25C2.5 12.4926 3.50736 13.5 4.75 13.5H11.25C12.4926 13.5 13.5 12.4926 13.5 11.25V8.75C13.5001 8.33589 13.8359 8 14.25 8C14.6641 8 14.9999 8.33589 15 8.75V11.25C15 13.3211 13.3211 15 11.25 15H4.75C2.67893 15 1 13.3211 1 11.25V4.75C1.00012 2.67905 2.67899 1 4.75 1H7.25Z"></path><path fill-rule="evenodd" clip-rule="evenodd" d="M13.4326 1.26953C13.7913 0.910937 14.3728 0.910883 14.7314 1.26953C15.0897 1.6282 15.0899 2.20981 14.7314 2.56836L9.2373 8.06152C8.68101 8.6177 7.94043 8.95161 7.15527 9C7.06754 9.0052 6.99468 8.93248 7 8.84473C7.04847 8.05961 7.38232 7.31897 7.93848 6.7627L13.4326 1.26953Z"></path></svg>
+```
+
+</details>
+<details><summary>SVG #7 (1590 chars)</summary>
+
+```html
+<svg class="" style="--icon-color:#9c9da1" width="14" height="14" viewBox="0 0 16 16" fill="#9c9da1" role="img" focusable="false" aria-hidden="true" xmlns="http://www.w3.org/2000/svg"><path fill-rule="evenodd" clip-rule="evenodd" d="M11.0069 1.00879C12.0235 1.09224 12.8967 1.78967 13.1944 2.78027L14.8907 8.42871C15.0034 8.80411 15.0258 9.20103 14.9571 9.58691L14.5069 12.1143L14.4375 12.4219C14.0542 13.8306 12.8312 14.8559 11.378 14.9863L11.0625 15H4.92875L4.6143 14.9863C3.16087 14.8561 1.93819 13.8307 1.55473 12.4219L1.48539 12.1143L1.03422 9.58691C0.974045 9.24914 0.984493 8.90311 1.06352 8.57031L1.1016 8.42871L2.79691 2.78027C3.09453 1.78948 3.96862 1.09214 4.98539 1.00879L5.19047 1H10.8018L11.0069 1.00879ZM2.96098 11.8516C3.13119 12.8053 3.96043 13.4999 4.92875 13.5H11.0625C12.031 13.5 12.8611 12.8054 13.0313 11.8516L13.2715 10.5H11.6211C11.2249 10.5 10.8512 10.6738 10.5957 10.9697L10.4932 11.1035C10.1201 11.6634 9.49195 11.9999 8.81938 12H7.17191C6.54154 11.9998 5.95019 11.7042 5.57133 11.2061L5.49809 11.1035C5.24687 10.7266 4.82396 10.5 4.37113 10.5H2.71977L2.96098 11.8516ZM5.19047 2.5C4.80433 2.50005 4.45748 2.72173 4.29203 3.06055L4.23246 3.21191L2.53715 8.86035C2.5234 8.90613 2.514 8.95293 2.50688 9H4.37113C5.32524 9.00001 6.21689 9.47715 6.74613 10.2715L6.78422 10.3223C6.88083 10.4341 7.02214 10.4998 7.17191 10.5H8.81938C8.99076 10.4999 9.15106 10.4142 9.24613 10.2715L9.34965 10.126C9.88713 9.41919 10.7268 9 11.6211 9H13.4854C13.4785 8.95295 13.4689 8.90616 13.4551 8.86035L11.7588 3.21191C11.6318 2.78947 11.2427 2.50018 10.8018 2.5H5.19047Z"></path></svg>
+```
+
+</details>
+<details><summary>SVG #8 (1666 chars)</summary>
+
+```html
+<svg class="" style="--icon-color:#9c9da1" width="14" height="14" viewBox="0 0 16 16" fill="#9c9da1" role="img" focusable="false" aria-hidden="true" xmlns="http://www.w3.org/2000/svg"><path fill-rule="evenodd" clip-rule="evenodd" d="M1 4.75V4.25C1 2.45507 2.45507 1 4.25 1H4.75C5.16421 1 5.5 1.33579 5.5 1.75C5.5 2.16421 5.16421 2.5 4.75 2.5H4.25C3.2835 2.5 2.5 3.2835 2.5 4.25V4.75C2.5 5.16421 2.16421 5.5 1.75 5.5C1.33579 5.5 1 5.16421 1 4.75Z"></path><path fill-rule="evenodd" clip-rule="evenodd" d="M11.25 1L11.75 1C13.5449 1 15 2.45507 15 4.25V4.75L14.9961 4.82715C14.9575 5.20512 14.6382 5.5 14.25 5.5C13.8618 5.5 13.5425 5.20512 13.5039 4.82715L13.5 4.75V4.25C13.5 3.2835 12.7165 2.5 11.75 2.5H11.25C10.8358 2.5 10.5 2.16421 10.5 1.75C10.5 1.33579 10.8358 1 11.25 1Z"></path><path fill-rule="evenodd" clip-rule="evenodd" d="M4.75 14.9951H4.25C2.45507 14.9951 1 13.54 1 11.7451L1 11.2451L1.00391 11.168C1.04253 10.79 1.36183 10.4951 1.75 10.4951C2.13817 10.4951 2.45747 10.79 2.49609 11.168L2.5 11.2451V11.7451C2.5 12.7116 3.2835 13.4951 4.25 13.4951H4.75C5.16421 13.4951 5.5 13.8309 5.5 14.2451C5.5 14.6593 5.16421 14.9951 4.75 14.9951Z"></path><path fill-rule="evenodd" clip-rule="evenodd" d="M11.25 15H11.75C13.5449 15 15 13.5449 15 11.75V11.25L14.9961 11.1729C14.9575 10.7949 14.6382 10.5 14.25 10.5C13.8618 10.5 13.5425 10.7949 13.5039 11.1729L13.5 11.25V11.75C13.5 12.7165 12.7165 13.5 11.75 13.5H11.25C10.8358 13.5 10.5 13.8358 10.5 14.25C10.5 14.6642 10.8358 15 11.25 15Z"></path><path fill-rule="evenodd" clip-rule="evenodd" d="M10 8C10 9.10457 9.10457 10 8 10C6.89543 10 6 9.10457 6 8C6 6.89543 6.89543 6 8 6C9.10457 6 10 6.89543 10 8Z"></path></svg>
+```
+
+</details>
+<details><summary>SVG #9 (1535 chars)</summary>
+
+```html
+<svg class="" style="--icon-color:#9c9da1" width="14" height="14" viewBox="0 0 16 16" fill="#9c9da1" role="img" focusable="false" aria-hidden="true" xmlns="http://www.w3.org/2000/svg"><path d="M13.25 4.03485L10.75 6.29004L10.75 1.75004L13.25 4.03485Z"></path><path d="M2.75 12.0052L5.25 9.75L5.25 14.29L2.75 12.0052Z"></path><path fill-rule="evenodd" clip-rule="evenodd" d="M14.251 6.99978C14.6647 7.00031 15 7.33589 15 7.74978V8.99978C14.9999 11.0706 13.3208 12.7495 11.25 12.7498H6V14.2547C5.99988 14.5497 5.82456 14.8172 5.55273 14.9363C5.28083 15.0554 4.96353 15.0035 4.74414 14.8045L2.24414 12.5349C2.08812 12.3933 1.99936 12.1922 2 11.9822C2.00079 11.7723 2.09111 11.572 2.24805 11.4314L4.74805 9.19216L4.83398 9.12478C5.04561 8.98458 5.31768 8.95869 5.55469 9.06325C5.82546 9.18286 6 9.45054 6 9.74489V11.2498H11.25C12.4923 11.2495 13.4999 10.2422 13.5 8.99978V7.74978C13.5 7.33556 13.8368 6.99978 14.251 6.99978Z"></path><path fill-rule="evenodd" clip-rule="evenodd" d="M10.4473 1.06325C10.7192 0.944194 11.0365 0.996009 11.2559 1.19509L13.7559 3.46462C13.9118 3.60625 14.0006 3.80648 14 4.01638C13.9993 4.22635 13.9089 4.42647 13.752 4.56716L11.252 6.80739L11.166 6.87478C10.9544 7.01489 10.6823 7.03994 10.4453 6.93532C10.1746 6.81574 10.0001 6.54892 10 6.25466V4.74978H4.75C3.50758 4.75004 2.5 5.7573 2.5 6.99978V8.24978C2.49988 8.66373 2.16392 8.99951 1.75 8.99978C1.33609 8.99951 1.00012 8.66373 1 8.24978V6.99978C1 4.92887 2.67916 3.25004 4.75 3.24978H10V1.74489C10 1.44977 10.1755 1.18239 10.4473 1.06325Z"></path></svg>
+```
+
+</details>
+<details><summary>SVG #10 (919 chars)</summary>
+
+```html
+<svg class="" style="--icon-color:#9c9da1" width="14" height="14" viewBox="0 0 16 16" fill="#9c9da1" role="img" focusable="false" aria-hidden="true" xmlns="http://www.w3.org/2000/svg"><path fill-rule="evenodd" clip-rule="evenodd" d="M11.3354 1.08228C11.7059 1.27438 11.8561 1.74156 11.6708 2.12576L9.5593 6.50508C9.39923 6.83707 9.64113 7.22224 10.0097 7.22224H14C14 7.22224 14.2275 7.22219 14.25 7.22219C14.6642 7.22219 15 7.57041 15 7.99996C15 8.4295 14.6642 8.77772 14.25 8.77772C10.4465 8.77772 7.32888 11.131 5.67083 14.5699C5.48559 14.9541 5.03507 15.1098 4.66459 14.9177C4.29411 14.7256 4.14394 14.2584 4.32918 13.8742L6.44081 9.49467C6.60085 9.16275 6.35907 8.77764 5.99059 8.77759C4.57706 8.7774 3.16352 8.77781 1.75 8.77781C1.33579 8.77781 1 8.42959 1 8.00004C1 7.5705 1.33579 7.22228 1.75 7.22228C5.55362 7.22228 8.67116 4.86885 10.3292 1.43003C10.5145 1.04588 10.965 0.890196 11.3354 1.08228Z"></path></svg>
+```
+
+</details>
+
+---
+
+## Design Critique (AI Phase 1)
+
+<details>
+<summary>Expand raw critique</summary>
+
+# Layout Analysis
+
+---
+
+## SECTION INVENTORY
+
+| # | Name | Vertical Span | Z-Layer | Background | Dominant Visual |
+|---|------|--------------|---------|------------|-----------------|
+| 1 | **nav** | 0–8% | floating (fixed) | solid-color `#000000` / near-black | interactive-controls |
+| 2 | **hero** | 8–100% (visible viewport) | base | solid-color `#0a0a0a` deep black | typography + imagery (app preview) |
+
+**Detailed notes:**
+
+- **nav**: Full-width top bar containing logo (left), primary nav links (center), divider, Log in + Sign up CTA (right). Fixed/sticky — floats above page content.
+- **hero**: Two-part vertical stack:
+  - Upper half: Large headline text + subheadline copy
+  - Lower half: Cropped product UI screenshot (app mockup) beginning at ~58% viewport height, bleeding off the bottom edge — indicates scroll-triggered animation or oversized asset
+
+---
+
+## SPATIAL GRID ANALYSIS
+
+### Navigation Bar
+- **Layout engine**: Flexbox
+- **Column count**: 3 logical zones — [logo] [nav-links] [auth-actions]
+- **Gap size**: nav links spaced ≈ 24px apart (spacing.lg)
+- **Item pattern**: fluid / space-between distribution
+- **Z-index tier**: `position: fixed`, z-index elevated (floating layer, visually above hero content)
+- **Sign up button**: Outlined white border pill, z consistent with nav
+
+### Hero Text Block
+- **Layout engine**: Block / single-column
+- **Column count**: 1
+- **Gap size**: Headline → subheadline gap ≈ 32px (spacing.xl)
+- **Item pattern**: fixed left-aligned, left margin ≈ 40–48px from viewport edge
+- **Typography applied**:
+  - H1/H2 headline: **64px / 4rem, lh:1, weight:510, ls:−1.408px** (Physical Data `h2` step — authoritative)
+  - Subheadline body copy: **15px / 0.9375rem, lh:1.6, weight:400, ls:−0.165px** (body step)
+
+### App Mockup / Product UI Preview
+- **Layout engine**: Absolute or transform-based overlay (visually angled/tilted presentation)
+- **Column count**: N/A — single composite image or rendered iframe
+- **Item pattern**: Fixed-width panel, roughly full-width container (~1200px), positioned starting ≈ 550px from top
+- **Masonry note**: None — single monolithic block
+- **Internal grid** (within mockup, observable visually):
+  - Left sidebar: 1 narrow column (~220px)
+  - Main content panel: wide center column
+  - Right detail panel: ~240px fixed
+  - Gap between panels: ≈ 1px borders (box-shadow `rgb(35,37,42) 0px 0px 0px 1px inset` — Physical Data confirms)
+
+---
+
+## ASSET AUDIT
+
+| Asset | Value |
+|-------|-------|
+| **Hero bg** | No image asset — solid color background `#0a0a0a` (CSS background-color, no image URL in Physical Data) |
+| **Logo/brand** | Inline SVG — white geometric mark (appears to be a stylized hexagon/shield shape) + wordmark "Linear" in white. Text-rendered alongside SVG icon. |
+| **Card images** | No card images detected in this viewport. The product UI preview is a rendered DOM component (not an `<img>` asset) — **no asset URL found** in Physical Data |
+| **Icon set** | Inline SVGs — small monochrome icons visible within the app mockup sidebar (inbox, issues, reviews, pulse, initiatives, projects icons). Count: ~8–10 inline SVGs within mockup. Nav also contains no icon assets beyond logo SVG. |
+| **Hero CTA imagery** | No standalone hero image asset — **no asset found** |
+
+---
+
+## COLOR SEMANTICS
+
+| Observed Hex | Semantic Role | Evidence |
+|-------------|---------------|----------|
+| `#000000` / `#0a0a0a` | **Neutral-Base** | Full page background, nav background |
+| `#1a1c20` / `#17191e` | **Neutral-Surface** | App mockup panel backgrounds, sidebar fill |
+| `#23252a` | **Neutral-Overlay** | Panel borders, inset shadows (confirmed by Physical Data: `rgb(35,37,42)` = `#23252a`) |
+| `#ffffff` | **Text-Inverse** | Hero headline text, nav logo wordmark, nav link labels |
+| `rgba(255,255,255,0.55)` approx `#8a8f98` | **Text-Muted** | Subheadline body copy ("Purpose-built for planning…"), sidebar nav items in mockup |
+| `#ffffff` (outline) | **Brand-Primary** | "Sign up" button — white border pill on dark bg, white text |
+| `#ffffff` @ low opacity | **Text-Main** (nav) | "Log in" text link, nav item labels (Product, Resources, Customers…) |
+| `rgba(255,255,255,0.08)` approx | **Border-Default** | Subtle separator between nav links and auth section (vertical divider `|`) |
+| `rgba(0,0,0,0.40)` | **Neutral-Overlay** (shadow) | Bottom edge shadow on nav/panels — confirmed Physical Data: `rgba(0,0,0,0.4) 0px 1px 0px 0px` |
+| `rgba(0,0,0,0.03)` | **Neutral-Overlay** (micro-shadow) | Repeated card-level micro-elevation — Physical Data: `rgba(0,0,0,0.03) 0px 1.2px 0px 0px` [×16 instances] |
+| `#5e6ad2` approx (mockup accent) | **Brand-Accent** | Small colored avatar/icon in GitHub Copilot badge within mockup panel (purple-blue tint) |
+
+---
+
+**Discrepancy Notes:**
+- Visual estimate of headline font-size ≈ 60–70px; Physical Data confirms exactly **64px (4rem)** — deferred to Physical Data.
+- Visual estimate of letter-spacing on headline appeared tight; Physical Data confirms **−1.408px** — authoritative.
+- The app mockup appears visually as a screenshot/image, but Physical Data signals suggest it is a rendered DOM component (box-shadow patterns ×16 at `rgba(0,0,0,0.03)` suggest real UI rows/cells, not a flat image).
+- Body copy color appeared near `#aaaaaa`; Physical Data body step weight 400 at 15px with ls:−0.165px confirms it is styled text, not image-embedded.
+
+</details>

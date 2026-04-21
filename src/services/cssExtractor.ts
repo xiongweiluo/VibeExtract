@@ -68,6 +68,7 @@ export interface SkeletonHints {
   hero:   { present: boolean; headline: string; ctaCount: number };
   cards:  { present: boolean; gridColumns: number; hasShadow: boolean };
   footer: { present: boolean; columns: number };
+  layoutConstraints: Array<{ role: string; classes: string }>;
 }
 
 export interface AssetCollection {
@@ -267,6 +268,19 @@ export interface RawBrowserData {
  *   • Inline SVGs: raw outerHTML of icon / logo SVGs
  */
 function browserExtract(): RawBrowserData {
+  function isVisuallyVisible(el: Element | null): boolean {
+    if (!el) return false;
+    const style = window.getComputedStyle(el);
+    const rect = el.getBoundingClientRect();
+    return (
+      style.display !== 'none' &&
+      style.visibility !== 'hidden' &&
+      style.opacity !== '0' &&
+      rect.width > 0 &&
+      rect.height > 0
+    );
+  }
+
   const spacingSet = new Set<number>();
   const fontMap    = new Map<string, number>();
   const familySet  = new Set<string>();
@@ -329,12 +343,14 @@ function browserExtract(): RawBrowserData {
     // Brand: first short-text anchor/element at the start of nav
     const brandCandidates = navEl.querySelectorAll('a, [class*="logo"], [class*="brand"]');
     for (const el of Array.from(brandCandidates).slice(0, 5)) {
+      if (!isVisuallyVisible(el)) continue;
       const text = (el.textContent ?? '').trim().replace(/\s+/g, ' ');
       if (text.length > 1 && text.length < 40) { navBrand = text; break; }
     }
     // Nav links (exclude brand-like element text already captured)
     const linkEls = navEl.querySelectorAll('a, button');
     for (const el of Array.from(linkEls)) {
+      if (!isVisuallyVisible(el)) continue;
       const text = (el.textContent ?? '').trim().replace(/\s+/g, ' ');
       if (text.length > 1 && text.length < 30 && text !== navBrand) {
         navItemTexts.push(text);
@@ -345,10 +361,10 @@ function browserExtract(): RawBrowserData {
 
   // — Hero: look for the dominant h1 near the top
   const h1El = document.querySelector('h1');
-  const heroHeadline = h1El
+  const heroHeadline = (h1El && isVisuallyVisible(h1El))
     ? (h1El.textContent ?? '').trim().replace(/\s+/g, ' ').slice(0, 80)
     : '';
-  const heroPresent = !!h1El;
+  const heroPresent = !!(h1El && isVisuallyVisible(h1El));
 
   // Count primary CTA buttons in the top section
   const heroSection = document.querySelector(
@@ -359,7 +375,7 @@ function browserExtract(): RawBrowserData {
     const ctaEls = heroSection.querySelectorAll(
       'a[class*="btn"], a[class*="button"], a[class*="cta"], button:not([type="submit"])',
     );
-    heroCTACount = Math.min(ctaEls.length, 5);
+    heroCTACount = Math.min(Array.from(ctaEls).filter(isVisuallyVisible).length, 5);
   }
 
   // — Helper: count grid columns robustly (handles minmax/fit-content values)
@@ -648,6 +664,53 @@ function browserExtract(): RawBrowserData {
   }
   zIndexLayers.sort((a, b) => b.zIndex - a.zIndex);
 
+  // ── Layout constraint extraction ──────────────────────────────────────────────
+  const layoutConstraints: Array<{ role: string; classes: string }> = [];
+  const structuralEls = Array.from(
+    document.querySelectorAll<Element>('header, nav, footer, section, main'),
+  );
+  for (const el of structuralEls) {
+    const lcs = window.getComputedStyle(el);
+    const disp = lcs.display;
+    if (disp !== 'flex' && disp !== 'grid') continue;
+
+    const parts: string[] = [disp];
+
+    if (disp === 'flex') {
+      const dir = lcs.flexDirection;
+      if (dir === 'row')            parts.push('flex-row');
+      else if (dir === 'row-reverse')    parts.push('flex-row-reverse');
+      else if (dir === 'column')         parts.push('flex-col');
+      else if (dir === 'column-reverse') parts.push('flex-col-reverse');
+    }
+
+    const jcMap: Record<string, string> = {
+      'flex-start': 'justify-start', 'flex-end': 'justify-end',
+      'center': 'justify-center', 'space-between': 'justify-between',
+      'space-around': 'justify-around', 'space-evenly': 'justify-evenly',
+    };
+    const jc = lcs.justifyContent;
+    if (jc && jc !== 'normal') parts.push(jcMap[jc] ?? `justify-[${jc}]`);
+
+    const aiMap: Record<string, string> = {
+      'flex-start': 'items-start', 'flex-end': 'items-end',
+      'center': 'items-center', 'stretch': 'items-stretch', 'baseline': 'items-baseline',
+    };
+    const ai = lcs.alignItems;
+    if (ai && ai !== 'normal') parts.push(aiMap[ai] ?? `items-[${ai}]`);
+
+    const gap = parseFloat(lcs.gap);
+    if (gap > 0 && isFinite(gap)) parts.push(`gap-[${Math.round(gap)}px]`);
+
+    const pl = parseFloat(lcs.paddingLeft);
+    if (pl > 0 && isFinite(pl)) parts.push(`px-[${Math.round(pl)}px]`);
+
+    const pt = parseFloat(lcs.paddingTop);
+    if (pt > 0 && isFinite(pt)) parts.push(`py-[${Math.round(pt)}px]`);
+
+    layoutConstraints.push({ role: el.tagName.toLowerCase(), classes: parts.join(' ') });
+  }
+
   return {
     spacing:      Array.from(spacingSet).sort((a, b) => a - b),
     fonts:        Array.from(fontMap.entries())
@@ -660,6 +723,7 @@ function browserExtract(): RawBrowserData {
       hero:   { present: heroPresent, headline: heroHeadline, ctaCount: heroCTACount },
       cards:  { present: cardsPresent, gridColumns, hasShadow },
       footer: { present: footerPresent, columns: footerColumns },
+      layoutConstraints,
     },
     assets: {
       images:     Array.from(imageUrlSet).slice(0, 50),

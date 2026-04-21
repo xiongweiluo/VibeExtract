@@ -1,9 +1,12 @@
 import { NextRequest } from 'next/server';
+import fs from 'fs/promises';
+import path from 'path';
 import axios, { AxiosError } from 'axios';
 import { extractDesignSystem, ExtractionError } from '../../../services/extractor';
 import { extractPhysicalTokens } from '../../../services/cssExtractor';
 import { writeDesignSpec } from '../../../services/specWriter';
 import type { DesignTokens } from '../../../types';
+import { WHITELIST_SITES } from '../../../config/whitelist';
 
 export const runtime = 'nodejs'; // Buffer + axios — not compatible with Edge runtime
 
@@ -114,6 +117,33 @@ export async function POST(req: NextRequest): Promise<Response> {
   }
 
   const targetUrl = urlResult.url;
+
+  // --- whitelist intercept --------------------------------------------------
+  const whitelistSite = WHITELIST_SITES.find(s =>
+    targetUrl.toLowerCase().includes(s.url.toLowerCase()),
+  );
+  if (whitelistSite) {
+    try {
+      const raw = await fs.readFile(
+        path.join(process.cwd(), 'public', whitelistSite.dataPath),
+        'utf-8',
+      );
+      const tokens = JSON.parse(raw) as DesignTokens;
+      const events = [
+        sseChunk({ step: 'screenshot', message: `[白名单] 跳过截图 — 使用本地缓存 (${whitelistSite.name})` }),
+        sseChunk({ step: 'physical',   message: '[白名单] 跳过 Puppeteer — 使用本地缓存' }),
+        sseChunk({ step: 'critique',   message: '[白名单] 跳过 Claude Vision — 使用本地缓存' }),
+        sseChunk({ step: 'extract',    message: '[白名单] 跳过 Token 提取 — 使用本地缓存' }),
+        sseChunk({ step: 'done', tokens, physicalOk: true, designCritique: '已从本地白名单即时加载' }),
+      ].join('');
+      return new Response(events, { headers: sseHeaders() });
+    } catch (err) {
+      return new Response(
+        sseChunk({ step: 'error', code: 'INTERNAL_ERROR', message: `白名单文件读取失败: ${err instanceof Error ? err.message : String(err)}` }),
+        { status: 500, headers: sseHeaders() },
+      );
+    }
+  }
 
   // --- stream ---------------------------------------------------------------
   const stream = new TransformStream<string, string>();

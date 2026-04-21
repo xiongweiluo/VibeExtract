@@ -1,0 +1,453 @@
+{
+  "color": {
+    "brand": {
+      "primary": "#4e6ef2",
+      "secondary": "#4395ff",
+      "accent": "#e84026"
+    },
+    "background": {
+      "page": "#ffffff",
+      "surface": "#f5f6fa",
+      "overlay": "rgba(0,0,0,0.1)"
+    },
+    "text": {
+      "primary": "#222222",
+      "secondary": "#9195a3",
+      "inverse": "#ffffff"
+    },
+    "border": "#4e6ef2",
+    "status": {
+      "success": "#4395ff",
+      "warning": "#e84026",
+      "error": "#eb4132"
+    }
+  },
+  "typography": {
+    "families": {
+      "body": "Arial, 'PingFang SC', sans-serif",
+      "heading": "Arial, 'PingFang SC', sans-serif",
+      "mono": "ui-monospace, monospace"
+    },
+    "weights": {
+      "regular": "400",
+      "medium": "500",
+      "semibold": "600",
+      "bold": "700"
+    },
+    "scale": {
+      "xs": {
+        "size": "12px",
+        "lineHeight": "1.2"
+      },
+      "sm": {
+        "size": "13px",
+        "lineHeight": "1.8"
+      },
+      "base": {
+        "size": "14px",
+        "lineHeight": "2.6"
+      },
+      "lg": {
+        "size": "16px",
+        "lineHeight": "2.3"
+      },
+      "xl": {
+        "size": "18px",
+        "lineHeight": "1.0"
+      },
+      "2xl": {
+        "size": "24px",
+        "lineHeight": "1.3"
+      },
+      "3xl": {
+        "size": "30px",
+        "lineHeight": "1.2"
+      },
+      "4xl": {
+        "size": "36px",
+        "lineHeight": "1.1"
+      }
+    }
+  },
+  "spacing": {
+    "baseUnit": 4,
+    "scale": {
+      "xs": "4px",
+      "sm": "8px",
+      "md": "16px",
+      "lg": "24px",
+      "xl": "32px",
+      "2xl": "48px",
+      "3xl": "64px"
+    }
+  },
+  "radius": {
+    "none": "0",
+    "sm": "4px",
+    "md": "8px",
+    "lg": "12px",
+    "xl": "16px",
+    "full": "9999px"
+  },
+  "shadow": {
+    "sm": "0 1px 2px rgba(0,0,0,0.06)",
+    "md": "rgba(0,0,0,0.1) 0px 1px 10px 0px",
+    "lg": "0 8px 24px rgba(0,0,0,0.12)",
+    "xl": "0 20px 60px rgba(0,0,0,0.20)"
+  },
+  "siteArchitecture": {
+    "paradigm": "content-site",
+    "density": "comfortable",
+    "motif": "clean white canvas, centered search focus, bold brand-blue CTA, Chinese typographic hierarchy, minimal chrome",
+    "layout": {
+      "type": "single-column",
+      "navPosition": "top-static"
+    },
+    "visualWeight": {
+      "dominant": "typography",
+      "hierarchy": "functional"
+    }
+  },
+  "skeleton": {
+    "hero": {
+      "present": true,
+      "layout": "centered",
+      "headline": "张凌赫登上法国第一大报纸",
+      "ctaCount": 1
+    },
+    "nav": {
+      "brand": "百度",
+      "items": [
+        "新闻",
+        "hao123",
+        "地图",
+        "贴吧",
+        "视频"
+      ]
+    },
+    "cards": {
+      "present": true,
+      "gridColumns": 4,
+      "hasShadow": false
+    },
+    "footer": {
+      "present": true,
+      "columns": 1
+    }
+  },
+  "uiBlueprint": {
+    "sections": [
+      {
+        "id": "nav",
+        "semanticType": "nav",
+        "layoutClasses": "flex items-center justify-between w-full px-[16px] h-[40px] bg-[var(--color-bg-page)] border-b border-[var(--color-border-default)]",
+        "zLayer": "floating",
+        "components": [
+          {
+            "role": "nav-links",
+            "classes": "flex items-center gap-[16px] text-[13px] font-[400] text-[var(--color-text-primary)] font-['Arial','PingFang_SC',sans-serif]",
+            "repeats": 9,
+            "children": [
+              {
+                "role": "nav-item",
+                "classes": "cursor-pointer hover:text-[var(--color-brand-primary)]",
+                "content": "新闻"
+              }
+            ]
+          },
+          {
+            "role": "nav-actions",
+            "classes": "flex items-center gap-[16px]",
+            "children": [
+              {
+                "role": "nav-setting",
+                "classes": "text-[13px] font-[400] text-[var(--color-text-primary)] cursor-pointer",
+                "content": "设置"
+              },
+              {
+                "role": "cta-button",
+                "classes": "px-[16px] py-[4px] rounded-[full] bg-[var(--color-brand-primary)] text-[var(--color-text-inverse)] text-[13px] font-[400] font-['Arial','PingFang_SC',sans-serif]",
+                "content": "登录"
+              }
+            ]
+          }
+        ]
+      },
+      {
+        "id": "hero",
+        "semanticType": "hero",
+        "layoutClasses": "flex flex-col items-center justify-center w-full pt-[120px] pb-[32px] bg-[var(--color-bg-page)]",
+        "zLayer": "base",
+        "components": [
+          {
+            "role": "brand-logo",
+            "classes": "h-[120px] w-auto mb-[32px]"
+          },
+          {
+            "role": "search-bar",
+            "classes": "relative flex items-center w-[644px] h-[52px] rounded-[full] border border-[var(--color-border-default)] bg-[var(--color-bg-page)] shadow-[rgba(0,0,0,0.1)_0px_1px_10px_0px]",
+            "children": [
+              {
+                "role": "search-input",
+                "classes": "flex-1 h-full px-[16px] text-[16px] font-[400] text-[var(--color-text-primary)] font-['Arial','PingFang_SC',sans-serif] bg-transparent outline-none",
+                "content": "张凌赫登上法国第一大报纸"
+              },
+              {
+                "role": "search-input-icons",
+                "classes": "flex items-center gap-[8px] px-[8px]",
+                "children": [
+                  {
+                    "role": "icon-mic",
+                    "classes": "w-[20px] h-[20px] text-[var(--color-text-secondary)] cursor-pointer"
+                  },
+                  {
+                    "role": "icon-attach",
+                    "classes": "w-[20px] h-[20px] text-[var(--color-text-secondary)] cursor-pointer"
+                  },
+                  {
+                    "role": "icon-camera",
+                    "classes": "w-[20px] h-[20px] text-[var(--color-text-secondary)] cursor-pointer"
+                  }
+                ]
+              },
+              {
+                "role": "search-submit-button",
+                "classes": "h-full px-[32px] rounded-r-[full] bg-[var(--color-brand-primary)] text-[var(--color-text-inverse)] text-[18px] font-[400] font-['Arial','PingFang_SC',sans-serif] cursor-pointer shrink-0",
+                "content": "百度一下"
+              }
+            ]
+          }
+        ]
+      },
+      {
+        "id": "ai-promo-banner",
+        "semanticType": "banner",
+        "layoutClasses": "flex items-center justify-center w-full py-[24px] bg-[var(--color-bg-page)]",
+        "zLayer": "base",
+        "components": [
+          {
+            "role": "promo-pill",
+            "classes": "flex items-center gap-[8px] px-[16px] py-[8px] rounded-[full] bg-[var(--color-bg-surface)] text-[13px] font-[400] text-[var(--color-text-primary)] font-['Arial','PingFang_SC',sans-serif] cursor-pointer",
+            "children": [
+              {
+                "role": "promo-icon",
+                "classes": "w-[16px] h-[16px] shrink-0"
+              },
+              {
+                "role": "promo-text",
+                "classes": "text-[13px] text-[var(--color-text-primary)]",
+                "content": "复杂问题就找文心助手，深入思考回答更优"
+              },
+              {
+                "role": "promo-chevron",
+                "classes": "w-[12px] h-[12px] text-[var(--color-text-secondary)]"
+              }
+            ]
+          }
+        ]
+      },
+      {
+        "id": "hot-search",
+        "semanticType": "content",
+        "layoutClasses": "w-[780px] mx-auto pt-[32px] pb-[48px] bg-[var(--color-bg-page)]",
+        "zLayer": "base",
+        "components": [
+          {
+            "role": "section-header",
+            "classes": "flex items-center justify-between mb-[24px]",
+            "children": [
+              {
+                "role": "section-title",
+                "classes": "flex items-center gap-[8px] text-[16px] font-[400] text-[var(--color-text-primary)] font-['Arial','PingFang_SC',sans-serif]",
+                "content": "百度热搜"
+              },
+              {
+                "role": "refresh-btn",
+                "classes": "flex items-center gap-[4px] text-[13px] text-[var(--color-text-secondary)] cursor-pointer",
+                "content": "换一换"
+              }
+            ]
+          },
+          {
+            "role": "hot-search-grid",
+            "classes": "grid grid-cols-2 gap-x-[40px] gap-y-[24px]",
+            "repeats": 9,
+            "children": [
+              {
+                "role": "hot-search-item",
+                "classes": "flex items-center gap-[12px] cursor-pointer",
+                "children": [
+                  {
+                    "role": "rank-number",
+                    "classes": "w-[16px] text-[13px] font-[400] text-[var(--color-text-secondary)] font-['Arial','PingFang_SC',sans-serif] shrink-0"
+                  },
+                  {
+                    "role": "item-title",
+                    "classes": "text-[13px] font-[400] text-[var(--color-text-primary)] font-['Arial','PingFang_SC',sans-serif] flex-1",
+                    "content": "习近平会见沙伦赛"
+                  },
+                  {
+                    "role": "item-badge",
+                    "classes": "text-[12px] font-[400] text-[var(--color-text-inverse)] bg-[var(--color-status-warning)] px-[4px] py-[2px] rounded-[sm]",
+                    "content": "热"
+                  }
+                ]
+              }
+            ]
+          }
+        ]
+      },
+      {
+        "id": "floating-side-tools",
+        "semanticType": "aside",
+        "layoutClasses": "fixed right-[8px] bottom-[120px] flex flex-col gap-[8px] z-[100]",
+        "zLayer": "floating",
+        "components": [
+          {
+            "role": "side-tool-icon",
+            "classes": "w-[40px] h-[40px] rounded-[full] bg-[var(--color-bg-surface)] shadow-[rgba(0,0,0,0.1)_0px_1px_10px_0px] flex items-center justify-center cursor-pointer"
+          },
+          {
+            "role": "side-tool-icon",
+            "classes": "w-[40px] h-[40px] rounded-[full] bg-[var(--color-bg-surface)] shadow-[rgba(0,0,0,0.1)_0px_1px_10px_0px] flex items-center justify-center cursor-pointer"
+          }
+        ]
+      },
+      {
+        "id": "footer",
+        "semanticType": "footer",
+        "layoutClasses": "flex items-center justify-center flex-wrap gap-[16px] w-full py-[16px] px-[16px] bg-[var(--color-bg-page)] border-t border-[var(--color-bg-surface)]",
+        "zLayer": "base",
+        "components": [
+          {
+            "role": "footer-links",
+            "classes": "flex items-center flex-wrap gap-[16px] text-[12px] font-[400] text-[var(--color-text-secondary)] font-['Arial','PingFang_SC',sans-serif]",
+            "repeats": 10,
+            "children": [
+              {
+                "role": "footer-link",
+                "classes": "cursor-pointer hover:text-[var(--color-brand-primary)]",
+                "content": "关于百度"
+              }
+            ]
+          }
+        ]
+      }
+    ]
+  },
+  "spacingSystem": {
+    "baseUnit": 4,
+    "steps": [
+      "4px",
+      "8px",
+      "12px",
+      "16px",
+      "20px",
+      "24px",
+      "28px",
+      "32px",
+      "40px",
+      "120px"
+    ],
+    "named": {
+      "xs": "4px",
+      "sm": "8px",
+      "md": "16px",
+      "lg": "24px",
+      "xl": "32px",
+      "2xl": "48px",
+      "3xl": "64px"
+    }
+  },
+  "typographyScale": {
+    "baseSize": "12px",
+    "baseSizeRem": "0.75rem",
+    "families": [
+      "Arial",
+      "arial",
+      "PingFang SC",
+      "cIconfont"
+    ],
+    "steps": [
+      {
+        "px": "12px",
+        "rem": "0.75rem",
+        "lineHeight": "1.2",
+        "weight": "400",
+        "letterSpacing": "0px",
+        "role": "body"
+      },
+      {
+        "px": "13px",
+        "rem": "0.8125rem",
+        "lineHeight": "1.8",
+        "weight": "400",
+        "letterSpacing": "0px",
+        "role": "body"
+      },
+      {
+        "px": "14px",
+        "rem": "0.875rem",
+        "lineHeight": "2.6",
+        "weight": "400",
+        "letterSpacing": "0px",
+        "role": "body-lg"
+      },
+      {
+        "px": "16px",
+        "rem": "1rem",
+        "lineHeight": "2.3",
+        "weight": "400",
+        "letterSpacing": "0px",
+        "role": "body-lg"
+      },
+      {
+        "px": "18px",
+        "rem": "1.125rem",
+        "lineHeight": "1",
+        "weight": "400",
+        "letterSpacing": "-1px",
+        "role": "h5"
+      }
+    ]
+  },
+  "shadowSpecs": [
+    {
+      "value": "rgba(0, 0, 0, 0.1) 0px 1px 10px 0px",
+      "frequency": 1
+    }
+  ],
+  "assets": {
+    "images": [
+      "https://pss.bdstatic.com/static/superman/img/topnav/newfanyi-da0cea8f7e.png",
+      "https://pss.bdstatic.com/static/superman/img/topnav/newxueshuicon-a5314d5c83.png",
+      "https://pss.bdstatic.com/static/superman/img/topnav/newbaike-889054f349.png",
+      "https://pss.bdstatic.com/static/superman/img/topnav/newzhidao-da1cf444b0.png",
+      "https://pss.bdstatic.com/static/superman/img/topnav/newjiankang-f03b804b4b.png",
+      "https://pss.bdstatic.com/static/superman/img/topnav/yingxiaoicon-612169cc36.png",
+      "https://pss.bdstatic.com/static/superman/img/topnav/newzhibo-a6a0831ecd.png",
+      "https://pss.bdstatic.com/static/superman/img/topnav/newyinyue-03ecd1e9b9.png",
+      "https://pss.bdstatic.com/static/superman/img/topnav/chengpian-9981cd1fdb.png",
+      "https://www.baidu.com/img/flexible/logo/pc/index.png",
+      "https://www.baidu.com/img/flexible/logo/pc/index@2.png",
+      "https://www.baidu.com/img/flexible/logo/pc/result.png",
+      "https://www.baidu.com/img/flexible/logo/pc/result@2.png",
+      "https://www.baidu.com/img/flexible/logo/pc/peak-result.png",
+      "https://psstatic.cdn.bcebos.com/aife/static/wenxinlogo_1770695621000.png",
+      "https://psstatic.cdn.bcebos.com/basics/aichat/hot_search_x3_1747880381000.png",
+      "https://pss.bdstatic.com/static/superman/img/qrcode/qrcode@2x-daf987ad02.png",
+      "https://pss.bdstatic.com/static/superman/img/qrcode/qrcode-hover@2x-f9b106a848.png"
+    ],
+    "svgs": [
+      "https://psstatic.cdn.bcebos.com/basics/aichat/to-up-newer_1766568454000.svg",
+      "https://psstatic.cdn.bcebos.com/basics/aichat/to-up-active_1764583314000.svg"
+    ],
+    "gradients": [],
+    "inlineSvgs": [
+      "<svg xmlns=\"http://www.w3.org/2000/svg\" width=\"18\" height=\"18\" viewBox=\"0 0 18 18\" fill=\"none\"><g opacity=\"0.5\" clip-path=\"url(#clip0_789_21003)\"><path d=\"M9.00033 17.3334C13.6027 17.3334 17.3337 13.6024 17.3337 9.00008C17.3337 4.39772 13.6027 0.666748 9.00033 0.666748C4.39796 0.666748 0.666992 4.39772 0.666992 9.00008C0.666992 13.6024 4.39796 17.3334 9.00033 17.3334ZM12.1384 6.80482L9.94309 9.00008L12.1384 11.1953L11.1955 12.1381L9.00026 9.94288L6.80503 12.1381L5.86219 11.1953L8.05746 9.00008L5.86219 6.80482L6.80503 5.86202L9.00026 8.05728L11.1955 5.86202L12.1384 6.80482Z\" fill=\"#9195A3\"></path></g><defs><clipPath id=\"clip0_789_21003\"><rect width=\"18\" height=\"18\" fill=\"white\"></rect></clipPath></defs></svg>",
+      "<svg xmlns=\"http://www.w3.org/2000/svg\" width=\"20\" height=\"20\" viewBox=\"0 0 20 20\" fill=\"none\"><rect x=\"5.91621\" y=\"1.63398\" width=\"8.16801\" height=\"11.6845\" rx=\"4.084\" stroke=\"currentColor\" stroke-width=\"1.6\"></rect><path d=\"M3.48096 12.5547C4.64674 14.9817 7.12786 16.6572 10.0003 16.6572C12.8728 16.6572 15.3539 14.9817 16.5197 12.5547\" stroke=\"currentColor\" stroke-width=\"1.6\" stroke-linecap=\"square\"></path><path d=\"M10 16.6582V18.6118\" stroke=\"currentColor\" stroke-width=\"1.6\" stroke-linecap=\"square\"></path></svg>",
+      "<svg width=\"20\" height=\"20\" viewBox=\"0 0 20 20\" fill=\"none\" xmlns=\"http://www.w3.org/2000/svg\"><path d=\"M11.4405 5.94065L7.25022 10.1309C6.52703 10.8541 6.52703 12.0266 7.25022 12.7498C7.97342 13.473 9.14595 13.473 9.86914 12.7498L11.3095 11.3094L14.0594 8.55957L14.7141 7.90484C16.1605 6.45845 16.1605 4.1134 14.7141 2.66701C13.2677 1.22062 10.9227 1.22062 9.4763 2.66701L3.97658 8.16673C1.807 10.3363 1.807 13.8539 3.97658 16.0235C6.14616 18.1931 9.66374 18.193 11.8333 16.0235L16.6783 11.1785\" stroke=\"currentColor\" stroke-width=\"1.6\"></path></svg>",
+      "<svg width=\"20\" height=\"20\" viewBox=\"0 0 20 20\" fill=\"none\" xmlns=\"http://www.w3.org/2000/svg\"><path d=\"M1.85278 4.81463C1.85278 3.58733 2.84771 2.59241 4.07501 2.59241H15.9269C17.1542 2.59241 18.1491 3.58733 18.1491 4.81463V15.185C18.1491 16.4123 17.1542 17.4072 15.9269 17.4072H4.075C2.8477 17.4072 1.85278 16.4123 1.85278 15.185V4.81463Z\" stroke=\"currentColor\" stroke-width=\"1.6\"></path><circle cx=\"13.7136\" cy=\"7.14282\" r=\"2.1\" fill=\"currentColor\" stroke=\"white\" stroke-width=\"0.8\"></circle><path d=\"M1.85278 14.2326L5.08504 9.72923C5.81909 8.70649 7.25533 8.49716 8.25077 9.26783L17.5001 16.4286\" stroke=\"currentColor\" stroke-width=\"1.6\"></path></svg>"
+    ]
+  }
+}
