@@ -117,10 +117,11 @@ export default function Home() {
     timerRef.current = null;
   }
 
-  async function handleExtract() {
-    if (!validateUrl(url)) return;
+  async function handleExtract(overrideUrl?: string) {
+    const effectiveUrl = overrideUrl ?? url;
+    if (!validateUrl(effectiveUrl)) return;
 
-    const target = url.trim();
+    const target = effectiveUrl.trim();
     setLoading(true);
     setTokens(null);
     setOriginalTokens(null);
@@ -265,7 +266,7 @@ export default function Home() {
                     onBlur={e => { e.currentTarget.style.borderColor='rgba(255,255,255,.065)'; e.currentTarget.style.background='rgba(255,255,255,.04)'; }}
                   />
                   <button
-                    onClick={handleExtract}
+                    onClick={() => handleExtract()}
                     disabled={loading}
                     style={{ height:46, padding:'0 20px', background:'linear-gradient(135deg, #7c6df0 0%, #a78bfa 100%)', border:'none', borderRadius:11, fontFamily:syneFont, fontWeight:700, fontSize:13, color:'#fff', cursor: loading ? 'not-allowed' : 'pointer', whiteSpace:'nowrap', transition:'opacity .2s, transform .15s', display:'flex', alignItems:'center', gap:7, opacity: loading ? 0.65 : 1 }}
                     onMouseEnter={e => { if (!loading) { e.currentTarget.style.opacity='0.88'; e.currentTarget.style.transform='translateY(-1px)'; }}}
@@ -284,7 +285,32 @@ export default function Home() {
                   </p>
                 )}
 
-                <div style={{ marginTop:12, fontSize:11.5, color:'rgba(255,255,255,.24)', fontFamily:monoFont, display:'flex', alignItems:'center', gap:8 }}>
+                {/* Quick demo tags */}
+                <div style={{ marginTop:12, display:'flex', alignItems:'center', gap:8, flexWrap:'wrap' }}>
+                  <span style={{ fontSize:11.5, color:'rgba(255,255,255,.32)', fontFamily:monoFont, whiteSpace:'nowrap' }}>
+                    ⚡ 极速演示 (免 API 额度)：
+                  </span>
+                  {([
+                    { name: 'Apple',         url: 'https://www.apple.com' },
+                    { name: 'Baidu',         url: 'https://www.baidu.com' },
+                    { name: 'Family',        url: 'https://family.co' },
+                    { name: 'Linear',        url: 'https://linear.app' },
+                    { name: 'Minimal Goods', url: 'https://minimalgoods.co' },
+                  ] as { name: string; url: string }[]).map(site => (
+                    <button
+                      key={site.url}
+                      disabled={loading}
+                      onClick={() => { setUrl(site.url); setUrlError(''); handleExtract(site.url); }}
+                      style={{ height:24, padding:'0 9px', background:'rgba(124,109,240,.12)', border:'1px solid rgba(124,109,240,.28)', borderRadius:6, fontFamily:monoFont, fontSize:11, color:'rgba(180,168,255,.82)', cursor: loading ? 'not-allowed' : 'pointer', whiteSpace:'nowrap', transition:'background .15s, border-color .15s', opacity: loading ? 0.5 : 1 }}
+                      onMouseEnter={e => { if (!loading) { e.currentTarget.style.background='rgba(124,109,240,.22)'; e.currentTarget.style.borderColor='rgba(124,109,240,.55)'; }}}
+                      onMouseLeave={e => { e.currentTarget.style.background='rgba(124,109,240,.12)'; e.currentTarget.style.borderColor='rgba(124,109,240,.28)'; }}
+                    >
+                      {site.name}
+                    </button>
+                  ))}
+                </div>
+
+                <div style={{ marginTop:8, fontSize:11.5, color:'rgba(255,255,255,.24)', fontFamily:monoFont, display:'flex', alignItems:'center', gap:8 }}>
                   <span>公开网站即可</span>
                   <span style={{ color:'rgba(255,255,255,.12)' }}>·</span>
                   <span>通常 8–15 秒</span>
